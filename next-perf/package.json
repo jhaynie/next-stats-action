@@ -1,0 +1,19 @@
+{
+  "name": "next-perf",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "format": "prettier --write **/*.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^16.16.3",
+    "node-fetch": "^2.3.0",
+    "pidusage": "^2.0.17",
+    "pretty-bytes": "^5.1.0",
+    "pretty-ms": "^4.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^1.16.4"
+  }
+}
