@@ -1,4 +1,4 @@
-# Next.js Performance Stats GitHub Action
+# Next.js Stats GitHub Action
 
 Compares stats between current `canary` branch and a PR branch for
 - average memory usage
@@ -6,5 +6,6 @@ Compares stats between current `canary` branch and a PR branch for
 - build duration
 - base page size
 - total build size
+- node_modules size
 
 After generating stats, they are posted as a comment on the PR that triggered them

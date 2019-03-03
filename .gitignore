@@ -1,4 +1,5 @@
 **/node_modules
+*-next.js
 **/.next
 .vscode
 origin

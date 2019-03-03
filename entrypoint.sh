@@ -3,4 +3,4 @@
 set -eu
 # sh -c "echo 'Supplied Args: ' $*"
 
-node ./next-perf
+node ./get-stats

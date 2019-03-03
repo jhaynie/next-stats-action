@@ -1,9 +1,11 @@
+const fs = require('fs')
 const { join } = require('path')
 const fetch = require('node-fetch')
 const pidUsage = require('pidusage')
 const { promisify } = require('util')
 const prettyMs = require('pretty-ms')
 const Octokit = require('@octokit/rest')
+const getDirSize = require('./getDirSize')
 const prettyBytes = require('pretty-bytes')
 const { exec: execSync, spawn } = require('child_process')
 
@@ -13,8 +15,7 @@ const TEST_PROJ_PATH = join(process.cwd(), 'test-project')
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
-const GIT_ROOT = join(process.cwd(), 'origin/')
-// const GIT_ROOT = 'https://github.com/'
+const GIT_ROOT = 'https://github.com/'
 
 if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   throw new Error(
@@ -37,16 +38,32 @@ const checkoutRepo = async (repo, ref, outDir) => {
 const buildRepo = async dir => {
   console.log(`Building next in ${dir}`)
   await exec(`cd ${dir} && yarn install`)
-
-  console.log(`Linking next and next-server`)
-  await exec(`cd ${dir}/packages/next && yarn unlink; yarn link`)
-  await exec(`cd ${dir}/packages/next-server && yarn unlink; yarn link`)
 }
 
-const setupTestProj = async () => {
+const setupTestProj = async repoDir => {
+  console.log(`Installing next and next-server in test-project`)
+  await exec(`rm -rf ${TEST_PROJ_PATH}/node_modules/next`)
+  await exec(`rm -rf ${TEST_PROJ_PATH}/node_modules/next-server`)
+
+  await exec(`mv ${repoDir}/packages/next/ ${TEST_PROJ_PATH}/node_modules/`)
+  await exec(
+    `mv ${repoDir}/packages/next-server/ ${TEST_PROJ_PATH}/node_modules/`
+  )
+
+  await exec(`cd ${TEST_PROJ_PATH}/node_modules/next && rm -rf node_modules`)
+  await exec(
+    `cd ${TEST_PROJ_PATH}/node_modules/next-server && rm -rf node_modules`
+  )
+
+  await exec(
+    `cd ${TEST_PROJ_PATH}/node_modules/next && yarn install --production`
+  )
+  await exec(
+    `cd ${TEST_PROJ_PATH}/node_modules/next-server && yarn install --production`
+  )
+
   console.log(`Cleaning .next and node_modules/.cache in test-project`)
   await exec(`cd ${TEST_PROJ_PATH} && rm -rf .next node_modules/.cache`)
-  await exec(`cd ${TEST_PROJ_PATH} && yarn link next next-server`)
 }
 
 const statsFailed = message => {
@@ -69,42 +86,52 @@ let currentStats = {
   buildLength: null,
   basePageBytes: null,
   totalBuildSize: null,
+  nodeModulesSize: null,
 }
 // stats from PR's repo/ref
 let prStats = {}
 
-const formatStats = stats => {
-  let output = `| Build Duration | Base Page Size | Build Dir Size | Average Memory Usage | Max Memory Usage | Average CPU Usage | Max CPU Usage |\n`
-  output += `| - | - | - | - | - | - | - |\n`
-  const keys = [
-    'buildLength',
-    'basePageBytes',
-    'totalBuildSize',
-    'avgMemUsage',
-    'maxMemUsage',
-    'avgCpuUsage',
-    'maxCpuUsage',
-  ]
+const formatStats = () => {
+  let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${GITHUB_REPOSITORY} ${GITHUB_REF} |\n`
+  output += `| - | - | - |\n`
 
-  keys.forEach((key, idx) => {
-    value = stats[key]
+  const labels = {
+    buildLength: 'Build Duration',
+    basePageBytes: 'Base Page Size',
+    totalBuildSize: 'Build Dir Size',
+    avgMemUsage: 'Average Memory Usage',
+    maxMemUsage: 'Max Memory Usage',
+    avgCpuUsage: 'Average CPU Usage',
+    maxCpuUsage: 'Max CPU Usage',
+    nodeModulesSize: 'node_modules Size',
+  }
+
+  Object.keys(labels).forEach((key, idx) => {
+    output += `| ${labels[key]} |`
+    stat1 = currentStats[key]
+    stat2 = prStats[key]
     // format memory and page size as bytes
-    if (key.indexOf('MemUsage') > -1 || key === 'basePageBytes') {
-      value = prettyBytes(value)
+    if (
+      key.indexOf('MemUsage') > -1 ||
+      key === 'basePageBytes' ||
+      key === 'nodeModulesSize' ||
+      key === 'totalBuildSize'
+    ) {
+      stat1 = prettyBytes(stat1)
+      stat2 = prettyBytes(stat2)
     }
     // add percent to CPU usage
     if (key.indexOf('CpuUsage') > -1) {
-      value += '%'
+      stat1 += '%'
+      stat2 += '%'
     }
     // format buildLength with pretty-ms
     if (key === 'buildLength') {
-      value = prettyMs(value)
+      stat1 = prettyMs(stat1)
+      stat2 = prettyMs(stat2)
     }
 
-    if (idx) output += ' '
-    else output += '| '
-
-    output += `${value} |`
+    output += ` ${stat1} | ${stat2} |\n`
   })
 
   return output
@@ -145,20 +172,16 @@ const finishedStats = (repo, ref, stats) => {
   curStats.avgCpuUsage = round(curStats.avgCpuUsage / numUsage)
   curStats.avgMemUsage = parseInt(curStats.avgMemUsage / numUsage)
   curStats.buildLength = stats.buildEnd - stats.buildStart
+  curStats.nodeModulesSize = stats.nodeModulesSize
   curStats.totalBuildSize = stats.totalBuildSize
   curStats.basePageBytes = stats.pageSize
 
   // We're done post stats!
   // TODO: post this as comment
   if (isPR) {
-    console.log('\nFinished!')
-
-    console.log(`## Stats from ${MAIN_REPO} ${MAIN_REF}`)
-    console.log(formatStats(currentStats))
-    console.log()
-
-    console.log(`## Stats from ${GITHUB_REPOSITORY} ${GITHUB_REF}`)
-    console.log(formatStats(prStats))
+    console.log('\nFinished!\n')
+    console.log(`## Stats from current PR`)
+    console.log(formatStats())
   }
 }
 
@@ -166,8 +189,9 @@ const getPageSize = () => {
   console.log(`Fetching page size with "next start"`)
 
   return new Promise((resolve, reject) => {
-    const child = spawn('next', ['start', `${TEST_PROJ_PATH}`], {
+    const child = spawn('./node_modules/next/dist/bin/next', ['start'], {
       timeout: 2 * 60 * 1000,
+      cwd: TEST_PROJ_PATH,
     })
     let fetchingPage = false
     let pageSize
@@ -215,7 +239,7 @@ const getStats = async (repo, ref) => {
 
   await checkoutRepo(repo, ref, dir)
   await buildRepo(dir)
-  await setupTestProj()
+  await setupTestProj(dir)
 
   // Ready to build test-project and get stats
   console.log(`Building test-project using repo ${repo} and ref ${ref}`)
@@ -224,10 +248,11 @@ const getStats = async (repo, ref) => {
     cpuUsage: [],
     memUsage: [],
     buildStart: new Date().getTime(),
+    nodeModulesSize: await getDirSize(`${TEST_PROJ_PATH}/node_modules`),
   }
   let statsInterval
 
-  const child = spawn('next', ['build', TEST_PROJ_PATH], {
+  const child = spawn('./node_modules/next/dist/bin/next', ['build'], {
     timeout: 5 * 1000 * 60, // 5 minutes
     cwd: TEST_PROJ_PATH,
   })
@@ -252,24 +277,24 @@ const getStats = async (repo, ref) => {
 
   child.on('exit', async code => {
     if (code) {
-      cleanUp()
+      cleanUp(true)
       return statsFailed(`build process exited with code ${code}`)
     }
     stats.buildEnd = new Date().getTime()
     try {
       // Get total build output size
-      const buildSize = await exec(`du -sh ${TEST_PROJ_PATH}/.next`)
-      stats.totalBuildSize = buildSize.stdout.split('\t')[0]
+      stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
       stats.pageSize = await getPageSize()
       finishedStats(repo, ref, stats)
+      cleanUp()
     } catch (error) {
       statsFailed(error.message)
+      cleanUp(true)
     }
-    cleanUp()
   })
 
   child.on('error', error => {
-    cleanUp()
+    cleanUp(true)
     statsFailed(error.message)
   })
 
@@ -278,6 +303,13 @@ const getStats = async (repo, ref) => {
   console.log()
 }
 
-getStats(MAIN_REPO, MAIN_REF)
-  .then(() => getStats(GITHUB_REPOSITORY, GITHUB_REF))
-  .catch(error => statsFailed(error.message))
+// getStats(MAIN_REPO, MAIN_REF)
+//   .then(() => getStats(GITHUB_REPOSITORY, GITHUB_REF))
+//   .catch(error => statsFailed(error.message))
+
+console.log('process.env', process.env)
+console.log(`----------------------------------------`)
+console.log(
+  'event.json',
+  fs.readFileSync(process.env['GITHUB_EVENT_PATH'], 'utf8')
+)
