@@ -15,4 +15,4 @@ LABEL com.github.actions.description="Compares performance of a PR branch with t
 # RUN cd ./get-stats && yarn install --production
 # RUN cd ./test-project && yarn install --production
 
-ENTRYPOINT "./entrypoint.sh"
+ENTRYPOINT ["/entrypoint.sh"]
