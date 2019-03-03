@@ -3,5 +3,4 @@
 set -eu
 # sh -c "echo 'Supplied Args: ' $*"
 
-# node ./get-stats
-node -v
+node /get-stats/

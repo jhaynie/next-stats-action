@@ -11,7 +11,7 @@ const { exec: execSync, spawn } = require('child_process')
 
 const exec = promisify(execSync)
 const { GITHUB_REPOSITORY, GITHUB_REF } = process.env
-const TEST_PROJ_PATH = join(process.cwd(), 'test-project')
+const TEST_PROJ_PATH = join('/', 'test-project')
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
