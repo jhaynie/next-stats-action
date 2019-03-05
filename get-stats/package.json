@@ -7,7 +7,6 @@
     "format": "prettier --write **/*.js"
   },
   "dependencies": {
-    "@octokit/rest": "^16.16.3",
     "node-fetch": "^2.3.0",
     "pidusage": "^2.0.17",
     "pretty-bytes": "^5.1.0",

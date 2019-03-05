@@ -1,17 +1,23 @@
-const fs = require('fs')
 const { join } = require('path')
 const fetch = require('node-fetch')
 const pidUsage = require('pidusage')
 const { promisify } = require('util')
 const prettyMs = require('pretty-ms')
-const Octokit = require('@octokit/rest')
 const getDirSize = require('./getDirSize')
 const prettyBytes = require('pretty-bytes')
 const { exec: execSync, spawn } = require('child_process')
 
-const exec = promisify(execSync)
-const { GITHUB_REPOSITORY, GITHUB_REF } = process.env
+const execP = promisify(execSync)
+const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '' } })
+const {
+  GITHUB_REPOSITORY,
+  GITHUB_REF,
+  GITHUB_TOKEN,
+  GITHUB_EVENT_PATH,
+} = process.env
 const TEST_PROJ_PATH = join('/', 'test-project')
+const EVENT_DATA = require(GITHUB_EVENT_PATH)
+const COMMENT_API_ENDPOINT = EVENT_DATA['pull_request']['_links']['comments']
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
@@ -67,7 +73,6 @@ const setupTestProj = async repoDir => {
 }
 
 const statsFailed = message => {
-  // TODO: will also probably want to submit a comment with error
   console.error(`Failed to get stats:`, message)
   process.exit(1)
 }
@@ -137,8 +142,8 @@ const formatStats = () => {
   return output
 }
 
-const finishedStats = (repo, ref, stats) => {
-  const isPR = repo === GITHUB_REPOSITORY && ref === GITHUB_REF
+const finishedStats = stats => {
+  const isPR = Boolean(currentStats.buildLength)
   const curStats = isPR ? prStats : currentStats
   const numUsage = stats.memUsage.length
 
@@ -177,11 +182,33 @@ const finishedStats = (repo, ref, stats) => {
   curStats.basePageBytes = stats.pageSize
 
   // We're done post stats!
-  // TODO: post this as comment
   if (isPR) {
     console.log('\nFinished!\n')
     console.log(`## Stats from current PR`)
-    console.log(formatStats())
+    const formattedStats = formatStats()
+    console.log(formattedStats)
+
+    console.log('Posting stats...')
+
+    fetch(COMMENT_API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+      },
+      body: JSON.stringify({
+        body: `## Stats from current PR\n${formattedStats}`,
+      }),
+    })
+      .then(res => {
+        if (res.ok) {
+          console.log('Posted comment with stats!')
+        } else {
+          console.error('Failed to post comment', res.status)
+        }
+      })
+      .catch(err => {
+        console.error('Error occurred posting comment', err)
+      })
   }
 }
 
@@ -285,7 +312,7 @@ const getStats = async (repo, ref) => {
       // Get total build output size
       stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
       stats.pageSize = await getPageSize()
-      finishedStats(repo, ref, stats)
+      finishedStats(stats)
       cleanUp()
     } catch (error) {
       statsFailed(error.message)
@@ -303,13 +330,6 @@ const getStats = async (repo, ref) => {
   console.log()
 }
 
-// getStats(MAIN_REPO, MAIN_REF)
-//   .then(() => getStats(GITHUB_REPOSITORY, GITHUB_REF))
-//   .catch(error => statsFailed(error.message))
-
-console.log('process.env', process.env)
-console.log(`----------------------------------------`)
-console.log(
-  'event.json',
-  fs.readFileSync(process.env['GITHUB_EVENT_PATH'], 'utf8')
-)
+getStats(MAIN_REPO, MAIN_REF)
+  .then(() => getStats(GITHUB_REPOSITORY, GITHUB_REF))
+  .catch(error => statsFailed(error.message))
