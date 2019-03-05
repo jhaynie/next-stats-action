@@ -36,7 +36,7 @@ if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   )
 }
 
-if (EVENT_DATA['action'] !== 'synchronized') {
+if (EVENT_DATA['action'] !== 'synchronize') {
   console.log('Not running for', EVENT_DATA['action'], 'event')
   process.exit(0)
 }
