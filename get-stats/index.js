@@ -36,6 +36,11 @@ if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   )
 }
 
+if (EVENT_DATA['action'] !== 'synchronized') {
+  console.log('Not running for', EVENT_DATA['action'], 'event')
+  process.exit(0)
+}
+
 console.log(
   `Got repo url: ${GITHUB_REPOSITORY} and branch/ref: ${GITHUB_REF}\n` +
     `Using repo url: ${PR_REPO} and branch/ref: ${PR_REF}\n`
