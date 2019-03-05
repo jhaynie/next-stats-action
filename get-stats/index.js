@@ -3,21 +3,28 @@ const fetch = require('node-fetch')
 const pidUsage = require('pidusage')
 const { promisify } = require('util')
 const prettyMs = require('pretty-ms')
-const getDirSize = require('./getDirSize')
 const prettyBytes = require('pretty-bytes')
 const { exec: execSync, spawn } = require('child_process')
+const { getDirSize, getFileSize } = require('./getSizes')
 
 const execP = promisify(execSync)
 const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '' } })
 const {
+  GITHUB_EVENT_PATH,
   GITHUB_REPOSITORY,
   GITHUB_REF,
   GITHUB_TOKEN,
-  GITHUB_EVENT_PATH,
 } = process.env
+
 const TEST_PROJ_PATH = join('/', 'test-project')
 const EVENT_DATA = require(GITHUB_EVENT_PATH)
-const COMMENT_API_ENDPOINT = EVENT_DATA['pull_request']['_links']['comments']
+
+const PR_DATA = EVENT_DATA['pull_request']
+// Since GITHUB_REPOSITORY and REF might not match the fork
+// use event data to get repo and ref info
+const PR_REPO = PR_DATA['head']['repo']['full_name']
+const PR_REF = PR_DATA['head']['ref']
+const COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
@@ -30,8 +37,34 @@ if (!GITHUB_REPOSITORY || !GITHUB_REF) {
 }
 
 console.log(
-  `Got repo url: ${GITHUB_REPOSITORY} and branch/ref: ${GITHUB_REF}\n`
+  `Got repo url: ${GITHUB_REPOSITORY} and branch/ref: ${GITHUB_REF}\n` +
+    `Using repo url: ${PR_REPO} and branch/ref: ${PR_REF}\n`
 )
+
+const getClientSizes = async () => {
+  const staticPath = `${TEST_PROJ_PATH}/.next/static`
+  const { stdout: pagesPath } = await exec(`find ${staticPath} -name 'pages'`)
+  const { stdout: commonsPath } = await exec(
+    `find ${staticPath} -name 'commons*.js'`
+  )
+  const { stdout: mainPath } = await exec(`find ${staticPath} -name 'main*.js'`)
+  const { stdout: webpackPath } = await exec(
+    `find ${staticPath} -name 'webpack*.js'`
+  )
+  const cleanPgsPath = pagesPath.trim()
+  const cleanComPath = commonsPath.trim()
+  const cleanMainPath = mainPath.trim()
+  const cleanWebpackPath = webpackPath.trim()
+
+  return {
+    _appClientBytes: await getFileSize(join(cleanPgsPath, '_app.js')),
+    _errClientBytes: await getFileSize(join(cleanPgsPath, '_error.js')),
+    indexClientBytes: await getFileSize(join(cleanPgsPath, 'index.js')),
+    commonChunkBytes: await getFileSize(cleanComPath),
+    clientMainBytes: await getFileSize(cleanMainPath),
+    clientWebpackBytes: await getFileSize(cleanWebpackPath),
+  }
+}
 
 const checkoutRepo = async (repo, ref, outDir) => {
   const url = GIT_ROOT + repo
@@ -89,20 +122,33 @@ let currentStats = {
   maxCpuUsage: null,
   // in milliseconds
   buildLength: null,
-  basePageBytes: null,
   totalBuildSize: null,
   nodeModulesSize: null,
+  // Client bundle sizes
+  _appClientBytes: null,
+  _errClientBytes: null,
+  indexClientBytes: null,
+  commonChunkBytes: null,
+  clientMainBytes: null,
+  clientWebpackBytes: null,
+  baseRenderBytes: null,
 }
 // stats from PR's repo/ref
 let prStats = {}
 
 const formatStats = () => {
-  let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${GITHUB_REPOSITORY} ${GITHUB_REF} |\n`
+  let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${PR_REPO} ${PR_REF} |\n`
   output += `| - | - | - |\n`
 
   const labels = {
     buildLength: 'Build Duration',
-    basePageBytes: 'Base Page Size',
+    _appClientBytes: 'Client _app Size',
+    _errClientBytes: 'Client _error size',
+    indexClientBytes: 'Client pages/index.js size',
+    commonChunkBytes: 'Client commons size',
+    clientMainBytes: 'Client main size',
+    clientWebpackBytes: 'Client webpack size',
+    baseRenderBytes: 'Base Rendered Size',
     totalBuildSize: 'Build Dir Size',
     avgMemUsage: 'Average Memory Usage',
     maxMemUsage: 'Max Memory Usage',
@@ -116,12 +162,7 @@ const formatStats = () => {
     stat1 = currentStats[key]
     stat2 = prStats[key]
     // format memory and page size as bytes
-    if (
-      key.indexOf('MemUsage') > -1 ||
-      key === 'basePageBytes' ||
-      key === 'nodeModulesSize' ||
-      key === 'totalBuildSize'
-    ) {
+    if (/.(MemUsage|Bytes|Size)/.test(key)) {
       stat1 = prettyBytes(stat1)
       stat2 = prettyBytes(stat2)
     }
@@ -179,15 +220,18 @@ const finishedStats = stats => {
   curStats.buildLength = stats.buildEnd - stats.buildStart
   curStats.nodeModulesSize = stats.nodeModulesSize
   curStats.totalBuildSize = stats.totalBuildSize
-  curStats.basePageBytes = stats.pageSize
+  curStats.baseRenderBytes = stats.renderSize
+
+  Object.keys(stats.clientSizes).forEach(key => {
+    curStats[key] = stats.clientSizes[key]
+  })
 
   // We're done post stats!
   if (isPR) {
+    const formattedStats = formatStats()
     console.log('\nFinished!\n')
     console.log(`## Stats from current PR`)
-    const formattedStats = formatStats()
     console.log(formattedStats)
-
     console.log('Posting stats...')
 
     fetch(COMMENT_API_ENDPOINT, {
@@ -212,7 +256,7 @@ const finishedStats = stats => {
   }
 }
 
-const getPageSize = () => {
+const getRenderSize = () => {
   console.log(`Fetching page size with "next start"`)
 
   return new Promise((resolve, reject) => {
@@ -311,7 +355,8 @@ const getStats = async (repo, ref) => {
     try {
       // Get total build output size
       stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
-      stats.pageSize = await getPageSize()
+      stats.renderSize = await getRenderSize()
+      stats.clientSizes = await getClientSizes()
       finishedStats(stats)
       cleanUp()
     } catch (error) {
@@ -330,6 +375,13 @@ const getStats = async (repo, ref) => {
   console.log()
 }
 
-getStats(MAIN_REPO, MAIN_REF)
-  .then(() => getStats(GITHUB_REPOSITORY, GITHUB_REF))
-  .catch(error => statsFailed(error.message))
+if (
+  MAIN_REPO === PR_REPO &&
+  (PR_REF === 'refs/heads/canary' || PR_REF === MAIN_REF)
+) {
+  console.log('Not running for merge into canary...')
+} else {
+  getStats(MAIN_REPO, MAIN_REF)
+    .then(() => getStats(PR_REPO, PR_REF))
+    .catch(error => statsFailed(error.message))
+}

@@ -22,4 +22,12 @@ async function getDirSize(path, ctx = { size: 0 }) {
   return ctx.size
 }
 
-module.exports = getDirSize
+async function getFileSize(path) {
+  const stats = await stat(path)
+  return stats.size
+}
+
+module.exports = {
+  getDirSize,
+  getFileSize,
+}

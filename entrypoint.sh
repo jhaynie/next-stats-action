@@ -1,6 +1,4 @@
 #!/bin/sh -l
 
-set -eu
-# sh -c "echo 'Supplied Args: ' $*"
-
+set -eu # stop on error
 node /get-stats/
