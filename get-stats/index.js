@@ -5,7 +5,7 @@ const { promisify } = require('util')
 const prettyMs = require('pretty-ms')
 const prettyBytes = require('pretty-bytes')
 const { exec: execSync, spawn } = require('child_process')
-const { getDirSize, getFileSize } = require('./getSizes')
+const { getDirSize, getClientSizes } = require('./getSizes')
 
 const execP = promisify(execSync)
 const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '' } })
@@ -46,31 +46,6 @@ console.log(
   `Got repo url: ${GITHUB_REPOSITORY} and branch/ref: ${GITHUB_REF}\n` +
     `Using repo url: ${PR_REPO} and branch/ref: ${PR_REF}\n`
 )
-
-const getClientSizes = async () => {
-  const staticPath = `${TEST_PROJ_PATH}/.next/static`
-  const { stdout: pagesPath } = await exec(`find ${staticPath} -name 'pages'`)
-  const { stdout: commonsPath } = await exec(
-    `find ${staticPath} -name 'commons*.js'`
-  )
-  const { stdout: mainPath } = await exec(`find ${staticPath} -name 'main*.js'`)
-  const { stdout: webpackPath } = await exec(
-    `find ${staticPath} -name 'webpack*.js'`
-  )
-  const cleanPgsPath = pagesPath.trim()
-  const cleanComPath = commonsPath.trim()
-  const cleanMainPath = mainPath.trim()
-  const cleanWebpackPath = webpackPath.trim()
-
-  return {
-    _appClientBytes: await getFileSize(join(cleanPgsPath, '_app.js')),
-    _errClientBytes: await getFileSize(join(cleanPgsPath, '_error.js')),
-    indexClientBytes: await getFileSize(join(cleanPgsPath, 'index.js')),
-    commonChunkBytes: await getFileSize(cleanComPath),
-    clientMainBytes: await getFileSize(cleanMainPath),
-    clientWebpackBytes: await getFileSize(cleanWebpackPath),
-  }
-}
 
 const checkoutRepo = async (repo, ref, outDir) => {
   const url = GIT_ROOT + repo
@@ -130,7 +105,14 @@ let currentStats = {
   buildLength: null,
   totalBuildSize: null,
   nodeModulesSize: null,
-  // Client bundle sizes
+  // Client bundle gzip sizes
+  _appClientGzip: null,
+  _errClientGzip: null,
+  indexClientGzip: null,
+  clientMainGzip: null,
+  commonChunkGzip: null,
+  clientWebpackGzip: null,
+  // Client bundle raw sizes
   _appClientBytes: null,
   _errClientBytes: null,
   indexClientBytes: null,
@@ -148,12 +130,19 @@ const formatStats = () => {
 
   const labels = {
     buildLength: 'Build Duration',
+    // Client sizes
     _appClientBytes: 'Client `_app` Size',
+    _appClientGzip: 'Client `_app` gzip Size',
     _errClientBytes: 'Client `_error` Size',
-    indexClientBytes: 'Client `pages/index.js` Size',
-    commonChunkBytes: 'Client `commons` Size',
+    _errClientGzip: 'Client `_error` gzip Size',
+    indexClientBytes: 'Client `pages/index` Size',
+    indexClientGzip: 'Client `pages/index` gzip Size',
     clientMainBytes: 'Client `main` Size',
+    clientMainGzip: 'Client `main` gzip Size',
+    commonChunkBytes: 'Client `commons` Size',
+    commonChunkGzip: 'Client `commons` gzip Size',
     clientWebpackBytes: 'Client `webpack` Size',
+    clientWebpackGzip: 'Client `webpack` gzip Size',
     baseRenderBytes: 'Base Rendered Size',
     totalBuildSize: 'Build Dir Size',
     avgMemUsage: 'Average Memory Usage',
@@ -168,7 +157,7 @@ const formatStats = () => {
     stat1 = currentStats[key]
     stat2 = prStats[key]
     // format memory and page size as bytes
-    if (/.(MemUsage|Bytes|Size)/.test(key)) {
+    if (/.(MemUsage|Bytes|Size|Gzip)/.test(key)) {
       stat1 = prettyBytes(stat1)
       stat2 = prettyBytes(stat2)
     }
@@ -362,7 +351,7 @@ const getStats = async (repo, ref) => {
       // Get total build output size
       stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
       stats.renderSize = await getRenderSize()
-      stats.clientSizes = await getClientSizes()
+      stats.clientSizes = await getClientSizes(exec, TEST_PROJ_PATH)
       finishedStats(stats)
       cleanUp()
     } catch (error) {

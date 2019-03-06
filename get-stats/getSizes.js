@@ -27,7 +27,39 @@ async function getFileSize(path) {
   return stats.size
 }
 
+async function getClientSizes(exec, TEST_PROJ_PATH) {
+  const staticPath = `${TEST_PROJ_PATH}/.next/static`
+  const { stdout: pagesPath } = await exec(`find ${staticPath} -name 'pages'`)
+  const { stdout: commonsPath } = await exec(
+    `find ${staticPath} -name 'commons*.js'`
+  )
+  const { stdout: mainPath } = await exec(`find ${staticPath} -name 'main*.js'`)
+  const { stdout: webpackPath } = await exec(
+    `find ${staticPath} -name 'webpack*.js'`
+  )
+  const cleanPgsPath = pagesPath.trim()
+  const sizes = {}
+  const paths = {
+    _appClientBytes: join(cleanPgsPath, '_app.js'),
+    _errClientBytes: join(cleanPgsPath, '_error.js'),
+    indexClientBytes: join(cleanPgsPath, 'index.js'),
+    commonChunkBytes: commonsPath.trim(),
+    clientMainBytes: mainPath.trim(),
+    clientWebpackBytes: webpackPath.trim(),
+  }
+
+  for (const key of Object.keys(paths)) {
+    const path = paths[key]
+    sizes[key] = await getFileSize(path)
+    const gzipKey = key.replace('Bytes', 'Gzip')
+    await exec(`gzip ${path} -c > ${path}.gz`)
+    sizes[gzipKey] = await getFileSize(`${path}.gz`)
+  }
+  return sizes
+}
+
 module.exports = {
   getDirSize,
   getFileSize,
+  getClientSizes,
 }
