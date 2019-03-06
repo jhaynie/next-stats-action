@@ -148,19 +148,19 @@ const formatStats = () => {
 
   const labels = {
     buildLength: 'Build Duration',
-    _appClientBytes: 'Client _app Size',
-    _errClientBytes: 'Client _error size',
-    indexClientBytes: 'Client pages/index.js size',
-    commonChunkBytes: 'Client commons size',
-    clientMainBytes: 'Client main size',
-    clientWebpackBytes: 'Client webpack size',
+    _appClientBytes: 'Client `_app` Size',
+    _errClientBytes: 'Client `_error` Size',
+    indexClientBytes: 'Client `pages/index.js` Size',
+    commonChunkBytes: 'Client `commons` Size',
+    clientMainBytes: 'Client `main` Size',
+    clientWebpackBytes: 'Client `webpack` Size',
     baseRenderBytes: 'Base Rendered Size',
     totalBuildSize: 'Build Dir Size',
     avgMemUsage: 'Average Memory Usage',
     maxMemUsage: 'Max Memory Usage',
     avgCpuUsage: 'Average CPU Usage',
     maxCpuUsage: 'Max CPU Usage',
-    nodeModulesSize: 'node_modules Size',
+    nodeModulesSize: '`node_modules` Size',
   }
 
   Object.keys(labels).forEach((key, idx) => {
