@@ -125,7 +125,7 @@ let currentStats = {
 let prStats = {}
 
 const formatStats = () => {
-  let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${PR_REPO} ${PR_REF} |\n`
+  let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${PR_REPO} ${PR_REF} | Change |\n`
   output += `| - | - | - |\n`
 
   const labels = {
@@ -156,6 +156,13 @@ const formatStats = () => {
     output += `| ${labels[key]} |`
     stat1 = currentStats[key]
     stat2 = prStats[key]
+    let diff = 'No change'
+    if (stat1 !== stat2) {
+      const diffPerc = ((stat2 - stat1) / stat1) * 100
+      const diffDir = diffPerc < 0 ? '⬇' : '⬆'
+      diff = `${diffDir} ${Math.round(Math.abs(diffPerc) * 100) / 100}%`
+    }
+
     // format memory and page size as bytes
     if (/.(MemUsage|Bytes|Size|Gzip)/.test(key)) {
       stat1 = prettyBytes(stat1)
@@ -172,7 +179,7 @@ const formatStats = () => {
       stat2 = prettyMs(stat2)
     }
 
-    output += ` ${stat1} | ${stat2} |\n`
+    output += ` ${stat1} | ${stat2} | ${diff} |\n`
   })
 
   return output
