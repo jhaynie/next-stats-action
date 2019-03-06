@@ -19,6 +19,7 @@ const {
 const TEST_PROJ_PATH = join('/', 'test-project')
 const EVENT_DATA = require(GITHUB_EVENT_PATH)
 
+const ACTION = EVENT_DATA['action']
 const PR_DATA = EVENT_DATA['pull_request']
 // Since GITHUB_REPOSITORY and REF might not match the fork
 // use event data to get repo and ref info
@@ -36,8 +37,8 @@ if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   )
 }
 
-if (EVENT_DATA['action'] !== 'synchronize') {
-  console.log('Not running for', EVENT_DATA['action'], 'event')
+if (ACTION !== 'synchronize' && ACTION !== 'opened') {
+  console.log('Not running for', ACTION, 'event action')
   process.exit(0)
 }
 
