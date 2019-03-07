@@ -126,7 +126,7 @@ let prStats = {}
 
 const formatStats = () => {
   let output = `| | ${MAIN_REPO} ${MAIN_REF} | ${PR_REPO} ${PR_REF} | Change |\n`
-  output += `| - | - | - |\n`
+  output += `| - | - | - | - |\n`
 
   const labels = {
     buildLength: 'Build Duration',
