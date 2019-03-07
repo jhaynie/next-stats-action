@@ -156,11 +156,11 @@ const formatStats = () => {
     output += `| ${labels[key]} |`
     stat1 = currentStats[key]
     stat2 = prStats[key]
-    let diff = 'No change'
+    let diff = '✓' // start with no change
     if (stat1 !== stat2) {
       const diffPerc = ((stat2 - stat1) / stat1) * 100
-      const diffDir = diffPerc < 0 ? '⬇' : '⬆'
-      diff = `${diffDir} ${Math.round(Math.abs(diffPerc) * 100) / 100}%`
+      const diffDir = diffPerc < 0 ? '' : '⚠️  +'
+      diff = `${diffDir}${Math.round(diffPerc * 100) / 100}%`
     }
 
     // format memory and page size as bytes
@@ -231,9 +231,14 @@ const finishedStats = stats => {
   // We're done post stats!
   if (isPR) {
     const formattedStats = formatStats()
+    let statsComment = `## Stats from current PR\n`
+    statsComment += `<details>\n`
+    statsComment += `<summary>Click to expand stats</summary>\n\n`
+    statsComment += formattedStats
+    statsComment += `\n</details>`
+
     console.log('\nFinished!\n')
-    console.log(`## Stats from current PR`)
-    console.log(formattedStats)
+    console.log(statsComment)
     console.log('Posting stats...')
 
     fetch(COMMENT_API_ENDPOINT, {
@@ -242,7 +247,7 @@ const finishedStats = stats => {
         Authorization: `token ${GITHUB_TOKEN}`,
       },
       body: JSON.stringify({
-        body: `## Stats from current PR\n${formattedStats}`,
+        body: statsComment,
       }),
     })
       .then(res => {
