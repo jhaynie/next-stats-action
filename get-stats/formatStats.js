@@ -50,12 +50,18 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     indexClientGzip: 'Client `pages/index` gzip Size',
     linkPgClientBytes: 'Client `pages/link` Size',
     linkPgClientGzip: 'Client `pages/link` gzip Size',
+    routerPgClientBytes: 'Client `pages/routerDirect` Size',
+    routerPgClientGzip: 'Client `pages/routerDirect` gzip Size',
+    withRouterPgClientBytes: 'Client `pages/withRouter` Size',
+    withRouterPgClientGzip: 'Client `pages/withRouter` gzip Size',
+
     clientMainBytes: 'Client `main` Size',
     clientMainGzip: 'Client `main` gzip Size',
     commonChunkBytes: 'Client `commons` Size',
     commonChunkGzip: 'Client `commons` gzip Size',
     clientWebpackBytes: 'Client `webpack` Size',
     clientWebpackGzip: 'Client `webpack` gzip Size',
+    
     // Serverless sizes
     linkPgServerlessBytes: 'Serverless `pages/link` Size',
     linkPgServerlessGzip: 'Serverless `pages/link` gzip Size',
@@ -63,6 +69,10 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     indexServerlessGzip: 'Serverless `pages/index` gzip Size',
     _errorServerlessBytes: 'Serverless `pages/_error` Size',
     _errorServerlessGzip: 'Serverless `pages/_error` gzip Size',
+    routerPgServerlessBytes: 'Serverless `pages/routerDirect` Size',
+    routerPgServerlessGzip: 'Serverless `pages/routerDirect` gzip Size',
+    withRouterPgServerlessBytes: 'Serverless `pages/withRouter` Size',
+    withRouterPgServerlessGzip: 'Serverless `pages/withRouter` gzip Size',
 
     baseRenderBytes: 'Base Rendered Size',
     totalBuildSize: 'Build Dir Size',

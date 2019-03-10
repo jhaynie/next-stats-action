@@ -46,6 +46,8 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
     _errClientBytes: join(cleanPgsPath, '_error.js'),
     indexClientBytes: join(cleanPgsPath, 'index.js'),
     linkPgClientBytes: join(cleanPgsPath, 'link.js'),
+    routerPgClientBytes: join(cleanPgsPath, 'routerDirect.js'),
+    withRouterPgClientBytes: join(cleanPgsPath, 'withRouter.js'),
     commonChunkBytes: commonsPath.trim(),
     clientMainBytes: mainPath.trim(),
     clientWebpackBytes: webpackPath.trim(),
@@ -54,6 +56,8 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
           indexServerlessBytes: join(serverlessPath, 'index.js'),
           linkPgServerlessBytes: join(serverlessPath, 'link.js'),
           _errorServerlessBytes: join(serverlessPath, '_error.js'),
+          routerPgServerlessBytes: join(serverlessPath, 'routerDirect.js'),
+          withRouterPgServerlessBytes: join(serverlessPath, 'withRouter.js'),
         }
       : {}),
   }
