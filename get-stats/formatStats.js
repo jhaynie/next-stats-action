@@ -48,6 +48,8 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     _errClientGzip: 'Client `_error` gzip Size',
     indexClientBytes: 'Client `pages/index` Size',
     indexClientGzip: 'Client `pages/index` gzip Size',
+    linkPgClientBytes: 'Client `pages/link` Size',
+    linkPgClientGzip: 'Client `pages/link` gzip Size',
     clientMainBytes: 'Client `main` Size',
     clientMainGzip: 'Client `main` gzip Size',
     commonChunkBytes: 'Client `commons` Size',
@@ -55,10 +57,12 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     clientWebpackBytes: 'Client `webpack` Size',
     clientWebpackGzip: 'Client `webpack` gzip Size',
     // Serverless sizes
-    indexServerlessBytes: 'Serverless `index` Size',
-    indexServerlessGzip: 'Serverless `index` gzip Size',
-    _errorServerlessBytes: 'Serverless `_error` Size',
-    _errorServerlessGzip: 'Serverless `_error` gzip Size',
+    linkPgServerlessBytes: 'Serverless `pages/link` Size',
+    linkPgServerlessGzip: 'Serverless `pages/link` gzip Size',
+    indexServerlessBytes: 'Serverless `pages/index` Size',
+    indexServerlessGzip: 'Serverless `pages/index` gzip Size',
+    _errorServerlessBytes: 'Serverless `pages/_error` Size',
+    _errorServerlessGzip: 'Serverless `pages/_error` gzip Size',
 
     baseRenderBytes: 'Base Rendered Size',
     totalBuildSize: 'Build Dir Size',
@@ -174,6 +178,7 @@ const finishedStats = (
     console.log(statsComment)
     console.log('Posting stats...')
 
+    if (!commentApiEndpoint) return console.log('No comment endpoint, not posting');
     fetch(commentApiEndpoint, {
       method: 'POST',
       headers: {

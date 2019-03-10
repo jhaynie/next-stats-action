@@ -19,15 +19,22 @@ const {
 } = process.env
 
 const TEST_PROJ_PATH = join('/', 'test-project')
-const EVENT_DATA = require(GITHUB_EVENT_PATH)
+let PR_REPO = GITHUB_REPOSITORY
+let PR_REF = GITHUB_REF
+let COMMENT_API_ENDPOINT
+let ACTION = 'opened'
+let EVENT_DATA
 
-const ACTION = EVENT_DATA['action']
-const PR_DATA = EVENT_DATA['pull_request']
-// Since GITHUB_REPOSITORY and REF might not match the fork
-// use event data to get repo and ref info
-const PR_REPO = PR_DATA['head']['repo']['full_name']
-const PR_REF = PR_DATA['head']['ref']
-const COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+if (GITHUB_EVENT_PATH) {
+  EVENT_DATA = require(GITHUB_EVENT_PATH)
+  ACTION = EVENT_DATA['action']
+  const PR_DATA = EVENT_DATA['pull_request']
+  // Since GITHUB_REPOSITORY and REF might not match the fork
+  // use event data to get repo and ref info
+  PR_REPO = PR_DATA['head']['repo']['full_name']
+  PR_REF = PR_DATA['head']['ref']
+  COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+}
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
@@ -128,11 +135,6 @@ const getRenderSize = () => {
   })
 }
 
-/**
- * Generate stats using a specific repo and ref
- * @param {string} repo - path of the repo e.g. zeit/next.js
- * @param {string} ref - ref or branch on repo
- */
 const getStats = async (repo, ref, dir, serverless = false) => {
   const nextConfig = join(TEST_PROJ_PATH, 'next.config.js')
   if (serverless) {
@@ -227,7 +229,8 @@ const getStats = async (repo, ref, dir, serverless = false) => {
 
 async function run() {
   const mainDir = MAIN_REPO.replace('/', '-')
-  const prDir = PR_REPO.replace('/', '-')
+  let prDir = PR_REPO.replace('/', '-')
+  if (mainDir === prDir) prDir += '-1'
 
   await checkoutRepo(MAIN_REPO, MAIN_REF, mainDir)
   await buildRepo(mainDir)
@@ -240,8 +243,6 @@ async function run() {
   getStats(MAIN_REPO, MAIN_REF, mainDir)
     .then(() => getStats(PR_REPO, PR_REF, prDir))
     .then(() => {
-      currentStats = {}
-      prStats = {}
       console.log('Getting serverless stats')
     })
     .then(() => getStats(MAIN_REPO, MAIN_REF, mainDir, true))

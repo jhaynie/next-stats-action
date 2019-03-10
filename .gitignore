@@ -1,5 +1,5 @@
 **/node_modules
-*-next.js
+*-next.js*
 **/.next
 .vscode
 test-project/yarn.lock

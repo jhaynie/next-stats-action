@@ -45,12 +45,14 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
     _appClientBytes: join(cleanPgsPath, '_app.js'),
     _errClientBytes: join(cleanPgsPath, '_error.js'),
     indexClientBytes: join(cleanPgsPath, 'index.js'),
+    linkPgClientBytes: join(cleanPgsPath, 'link.js'),
     commonChunkBytes: commonsPath.trim(),
     clientMainBytes: mainPath.trim(),
     clientWebpackBytes: webpackPath.trim(),
     ...(serverless
       ? {
           indexServerlessBytes: join(serverlessPath, 'index.js'),
+          linkPgServerlessBytes: join(serverlessPath, 'link.js'),
           _errorServerlessBytes: join(serverlessPath, '_error.js'),
         }
       : {}),
