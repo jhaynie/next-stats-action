@@ -27,8 +27,10 @@ async function getFileSize(path) {
   return stats.size
 }
 
-async function getClientSizes(exec, TEST_PROJ_PATH) {
-  const staticPath = `${TEST_PROJ_PATH}/.next/static`
+async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
+  const staticPath = join(TEST_PROJ_PATH, '.next/static')
+  const serverlessPath = join(TEST_PROJ_PATH, '.next/serverless/pages')
+
   const { stdout: pagesPath } = await exec(`find ${staticPath} -name 'pages'`)
   const { stdout: commonsPath } = await exec(
     `find ${staticPath} -name 'commons*.js'`
@@ -46,6 +48,12 @@ async function getClientSizes(exec, TEST_PROJ_PATH) {
     commonChunkBytes: commonsPath.trim(),
     clientMainBytes: mainPath.trim(),
     clientWebpackBytes: webpackPath.trim(),
+    ...(serverless
+      ? {
+          indexServerlessBytes: join(serverlessPath, 'index.js'),
+          _errorServerlessBytes: join(serverlessPath, '_error.js'),
+        }
+      : {}),
   }
 
   for (const key of Object.keys(paths)) {
