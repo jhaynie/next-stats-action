@@ -98,8 +98,13 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
 
     // format memory and page size as bytes
     if (/.(MemUsage|Bytes|Size|Gzip)/.test(key)) {
-      stat1 = prettyBytes(stat1)
-      stat2 = prettyBytes(stat2)
+      if (typeof stat1 === 'number') {
+        stat1 = prettyBytes(stat1)
+      }
+
+      if (typeof stat2 === 'number') {
+        stat2 = prettyBytes(stat2)
+      }
     }
     // add percent to CPU usage
     if (key.indexOf('CpuUsage') > -1) {

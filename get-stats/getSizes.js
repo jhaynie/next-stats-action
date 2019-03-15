@@ -63,11 +63,17 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
   }
 
   for (const key of Object.keys(paths)) {
-    const path = paths[key]
-    sizes[key] = await getFileSize(path)
     const gzipKey = key.replace('Bytes', 'Gzip')
-    await exec(`gzip ${path} -c > ${path}.gz`)
-    sizes[gzipKey] = await getFileSize(`${path}.gz`)
+    const path = paths[key]
+    try {
+      sizes[key] = await getFileSize(path)
+      await exec(`gzip ${path} -c > ${path}.gz`)
+      sizes[gzipKey] = await getFileSize(`${path}.gz`)
+    } catch (error) {
+      sizes[key] = 'Error getting size'
+      sizes[gzipKey] = 'Error getting size'
+      console.error(`Failed to get size for ${path}:`, error)
+    }
   }
   return sizes
 }
