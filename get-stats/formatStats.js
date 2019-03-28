@@ -91,31 +91,34 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
 
     let diff = '✓' // start with no change
     if (stat1 !== stat2) {
-      const diffPerc = ((stat2 - stat1) / stat1) * 100
-      const diffDir = diffPerc < 0 ? '' : '⚠️  +'
-      diff = `${diffDir}${Math.round(diffPerc * 100) / 100}%`
+      diff = Math.round((stat2 - stat1) * 100) / 100
+      // below is for percentage
+      // const diffPerc = ((stat2 - stat1) / stat1) * 100
+      // const diffDir = diffPerc < 0 ? '' : '⚠️  +'
+      // diff = `${diffDir}${Math.round(diffPerc * 100) / 100}%`
     }
+    let formatter = stat => stat
 
     // format memory and page size as bytes
     if (/.(MemUsage|Bytes|Size|Gzip)/.test(key)) {
-      if (typeof stat1 === 'number') {
-        stat1 = prettyBytes(stat1)
-      }
-
-      if (typeof stat2 === 'number') {
-        stat2 = prettyBytes(stat2)
-      }
+      formatter = stat => prettyBytes(stat)
     }
     // add percent to CPU usage
     if (key.indexOf('CpuUsage') > -1) {
-      stat1 += '%'
-      stat2 += '%'
+      formatter = stat => `${stat}%`
     }
     // format buildLength with pretty-ms
     if (key === 'buildLength') {
-      stat1 = prettyMs(stat1)
-      stat2 = prettyMs(stat2)
+      formatter = stat => prettyMs(stat)
     }
+    if (typeof stat1 === 'number') stat1 = formatter(stat1)
+    if (typeof stat2 === 'number') stat2 = formatter(stat2)
+    if (typeof diff === 'number') {
+      const diffSign = diff < 0 ? '' : '⚠️  +'
+      diff = formatter(diff)
+      diff = diffSign + diff
+    }
+    if (stat1 === stat2) diff = '✓'
 
     output += ` ${stat1} | ${stat2} | ${diff} |\n`
   })
