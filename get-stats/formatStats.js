@@ -61,7 +61,7 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     commonChunkGzip: 'Client `commons` gzip Size',
     clientWebpackBytes: 'Client `webpack` Size',
     clientWebpackGzip: 'Client `webpack` gzip Size',
-    
+
     // Serverless sizes
     linkPgServerlessBytes: 'Serverless `pages/link` Size',
     linkPgServerlessGzip: 'Serverless `pages/link` gzip Size',
@@ -118,7 +118,6 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
       diff = formatter(diff)
       diff = diffSign + diff
     }
-    if (stat1 === stat2) diff = '✓'
 
     output += ` ${stat1} | ${stat2} | ${diff} |\n`
   })
@@ -196,7 +195,8 @@ const finishedStats = (
     console.log(statsComment)
     console.log('Posting stats...')
 
-    if (!commentApiEndpoint) return console.log('No comment endpoint, not posting');
+    if (!commentApiEndpoint)
+      return console.log('No comment endpoint, not posting')
     fetch(commentApiEndpoint, {
       method: 'POST',
       headers: {
