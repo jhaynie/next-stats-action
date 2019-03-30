@@ -26,7 +26,6 @@ let PR_REF = GITHUB_REF
 let COMMENT_API_ENDPOINT
 let ACTION = GITHUB_ACTION
 let EVENT_DATA
-let STABLE_TAG
 
 if (GITHUB_EVENT_PATH) {
   EVENT_DATA = require(GITHUB_EVENT_PATH)
@@ -242,7 +241,7 @@ const getStats = async (repo, ref, dir, serverless = false) => {
         GITHUB_TOKEN,
         {
           MAIN_REPO,
-          MAIN_REF: isCanaryRelease ? STABLE_TAG : MAIN_REF,
+          MAIN_REF,
           PR_REPO,
           PR_REF: isCanaryRelease ? RELEASE_TAG : PR_REF,
           isCanaryRelease,
