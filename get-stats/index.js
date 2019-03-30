@@ -42,7 +42,7 @@ if (GITHUB_EVENT_PATH) {
   }
 }
 
-const MAIN_REF = 'canary'
+let MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
 const GIT_ROOT = GIT_ROOT_DIR || 'https://github.com/'
 const RELEASE_TAG = GITHUB_REF
@@ -53,6 +53,7 @@ const isCanaryRelease =
 if (isCanaryRelease) {
   PR_REPO = MAIN_REPO
   PR_REF = MAIN_REF
+  MAIN_REF = 'master'
 }
 
 if (!GITHUB_REPOSITORY || !GITHUB_REF) {
@@ -270,15 +271,6 @@ async function run() {
   if (mainDir === prDir) prDir += '-1'
 
   await checkoutRepo(MAIN_REPO, MAIN_REF, mainDir)
-
-  if (isCanaryRelease) {
-    // reset to latest stable tag
-    const { stdout: stableTag } = await exec(
-      `cd ${mainDir} && git describe --exclude '*canary*' --abbrev=0`
-    )
-    STABLE_TAG = stableTag.trim()
-    await resetHead(mainDir, STABLE_TAG)
-  }
   await buildRepo(mainDir)
   console.log()
 
