@@ -130,10 +130,14 @@ let statsComment = `## Stats from current PR`
 const finishedStats = (
   stats,
   serverless,
+  isCanaryRelease,
   commentApiEndpoint,
   githubToken,
   reposObj
 ) => {
+  if (isCanaryRelease && statsComment.indexOf('current PR') > -1) {
+    statsComment = '## Stats from current release'
+  }
   // Clear stats for serverless
   if (serverless && prStats.buildLength) {
     currentStats = {}
@@ -197,6 +201,8 @@ const finishedStats = (
 
     if (!commentApiEndpoint)
       return console.log('No comment endpoint, not posting')
+    if (!githubToken) return console.log('No github token, not posting')
+
     fetch(commentApiEndpoint, {
       method: 'POST',
       headers: {

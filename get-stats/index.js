@@ -46,7 +46,8 @@ const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
 const GIT_ROOT = GIT_ROOT_DIR || 'https://github.com/'
 const RELEASE_TAG = GITHUB_REF
-const isCanaryRelease = ACTION === 'release' && RELEASE_TAG.indexOf('canary') > -1
+const isCanaryRelease =
+  ACTION === 'release' && RELEASE_TAG.indexOf('canary') > -1
 
 if (isCanaryRelease) {
   PR_REPO = MAIN_REPO
@@ -231,12 +232,20 @@ const getStats = async (repo, ref, dir, serverless = false) => {
       // Get total build output size
       stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
       stats.clientSizes = await getClientSizes(exec, serverless, TEST_PROJ_PATH)
-      finishedStats(stats, serverless, COMMENT_API_ENDPOINT, GITHUB_TOKEN, {
-        MAIN_REPO,
-        MAIN_REF: isCanaryRelease ? STABLE_TAG : MAIN_REF,
-        PR_REPO,
-        PR_REF: isCanaryRelease ? RELEASE_TAG : PR_REF,
-      })
+      finishedStats(
+        stats,
+        serverless,
+        isCanaryRelease,
+        COMMENT_API_ENDPOINT,
+        GITHUB_TOKEN,
+        {
+          MAIN_REPO,
+          MAIN_REF: isCanaryRelease ? STABLE_TAG : MAIN_REF,
+          PR_REPO,
+          PR_REF: isCanaryRelease ? RELEASE_TAG : PR_REF,
+          isCanaryRelease,
+        }
+      )
       cleanUp()
     } catch (error) {
       statsFailed(error.message)
