@@ -1,8 +1,6 @@
 # Next.js Stats GitHub Action
 
 Compares stats between current `canary` branch and a PR branch for
-- average memory usage
-- average CPU usage
 - serverless sizes
 - build duration
 - base render size

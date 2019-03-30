@@ -5,13 +5,13 @@ const prettyBytes = require('pretty-bytes')
 // stats from main repo/reef
 let currentStats = {
   // avg bytes of memory used
-  avgMemUsage: null,
+  // avgMemUsage: null,
   // maximum bytes of memory used
-  maxMemUsage: null,
+  // maxMemUsage: null,
   // avg CPU percent used
-  avgCpuUsage: null,
+  // avgCpuUsage: null,
   // maximum CPU percent used
-  maxCpuUsage: null,
+  // maxCpuUsage: null,
   // in milliseconds
   buildLength: null,
   totalBuildSize: null,
@@ -75,11 +75,13 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     withRouterPgServerlessGzip: 'Serverless `pages/withRouter` gzip Size',
 
     baseRenderBytes: 'Base Rendered Size',
+    totalBundleBytes: 'Total Bundle (main, webpack, commons) Size',
+    totalBundleGzip: 'Total Bundle (main, webpack, commons) gzip Size',
     totalBuildSize: 'Build Dir Size',
-    avgMemUsage: 'Average Memory Usage',
-    maxMemUsage: 'Max Memory Usage',
-    avgCpuUsage: 'Average CPU Usage',
-    maxCpuUsage: 'Max CPU Usage',
+    // avgMemUsage: 'Average Memory Usage',
+    // maxMemUsage: 'Max Memory Usage',
+    // avgCpuUsage: 'Average CPU Usage',
+    // maxCpuUsage: 'Max CPU Usage',
     nodeModulesSize: '`node_modules` Size',
   }
 
@@ -180,9 +182,29 @@ const finishedStats = (
   curStats.nodeModulesSize = stats.nodeModulesSize
   curStats.totalBuildSize = stats.totalBuildSize
   curStats.baseRenderBytes = stats.renderSize
+  curStats.totalBundleBytes = 0
+  curStats.totalBundleGzip = 0
+
+  const bundleByteKeys = {
+    indexClientBytes: 1,
+    _appClientBytes: 1,
+    clientMainBytes: 1,
+    commonChunkBytes: 1,
+  }
+  const bundleGzipKeys = {
+    indexClientGzip: 1,
+    _appClientGzip: 1,
+    clientMainGzip: 1,
+    commonChunkGzip: 1,
+  }
 
   Object.keys(stats.clientSizes).forEach(key => {
     curStats[key] = stats.clientSizes[key]
+    const isBundleBytes = bundleByteKeys[key]
+    if (isBundleBytes || bundleGzipKeys[key]) {
+      curStats[isBundleBytes ? 'totalBundleBytes' : 'totalBundleGzip'] +=
+        stats.clientSizes[key] || 0
+    }
   })
 
   if (isPR) {

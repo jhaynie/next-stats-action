@@ -46,7 +46,7 @@ const MAIN_REPO = 'zeit/next.js'
 const GIT_ROOT = GIT_ROOT_DIR || 'https://github.com/'
 const RELEASE_TAG = GITHUB_REF
 const isCanaryRelease =
-  (ACTION === 'published' || ACTION === 'release') && 
+  (ACTION === 'published' || ACTION === 'release') &&
   RELEASE_TAG.indexOf('canary') > -1
 
 if (isCanaryRelease) {
