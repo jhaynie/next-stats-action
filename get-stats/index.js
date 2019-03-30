@@ -32,7 +32,7 @@ if (GITHUB_EVENT_PATH) {
   EVENT_DATA = require(GITHUB_EVENT_PATH)
   ACTION = EVENT_DATA['action']
 
-  if (ACTION !== 'published') {
+  if (ACTION !== 'published' && ACTION !== 'release') {
     const PR_DATA = EVENT_DATA['pull_request']
     // Since GITHUB_REPOSITORY and REF might not match the fork
     // use event data to get repo and ref info
@@ -47,7 +47,8 @@ const MAIN_REPO = 'zeit/next.js'
 const GIT_ROOT = GIT_ROOT_DIR || 'https://github.com/'
 const RELEASE_TAG = GITHUB_REF
 const isCanaryRelease =
-  ACTION === 'published' && RELEASE_TAG.indexOf('canary') > -1
+  (ACTION === 'published' || ACTION === 'release') && 
+  RELEASE_TAG.indexOf('canary') > -1
 
 if (isCanaryRelease) {
   PR_REPO = MAIN_REPO
