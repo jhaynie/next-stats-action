@@ -114,8 +114,8 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     if (typeof stat1 === 'number') stat1 = formatter(stat1)
     if (typeof stat2 === 'number') stat2 = formatter(stat2)
     if (typeof diff === 'number') {
-      const diffSign = diff < 0 ? '' : '⚠️  +'
-      diff = formatter(diff)
+      const diffSign = diff < 0 ? '-' : '⚠️  +'
+      diff = formatter(Math.abs(diff))
       diff = diffSign + diff
     }
 

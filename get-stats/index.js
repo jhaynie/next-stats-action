@@ -12,33 +12,46 @@ const writeFile = promisify(writeFileOrig)
 const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '' } })
 
 const {
+  GITHUB_ACTION,
   GITHUB_EVENT_PATH,
   GITHUB_REPOSITORY,
   GITHUB_REF,
   GITHUB_TOKEN,
+  GIT_ROOT_DIR,
 } = process.env
 
-const TEST_PROJ_PATH = join('/', 'test-project')
+const TEST_PROJ_PATH = join(__dirname, '../test-project')
 let PR_REPO = GITHUB_REPOSITORY
 let PR_REF = GITHUB_REF
 let COMMENT_API_ENDPOINT
-let ACTION = 'opened'
+let ACTION = GITHUB_ACTION
 let EVENT_DATA
+let STABLE_TAG
 
 if (GITHUB_EVENT_PATH) {
   EVENT_DATA = require(GITHUB_EVENT_PATH)
   ACTION = EVENT_DATA['action']
-  const PR_DATA = EVENT_DATA['pull_request']
-  // Since GITHUB_REPOSITORY and REF might not match the fork
-  // use event data to get repo and ref info
-  PR_REPO = PR_DATA['head']['repo']['full_name']
-  PR_REF = PR_DATA['head']['ref']
-  COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+
+  if (ACTION !== 'release') {
+    const PR_DATA = EVENT_DATA['pull_request']
+    // Since GITHUB_REPOSITORY and REF might not match the fork
+    // use event data to get repo and ref info
+    PR_REPO = PR_DATA['head']['repo']['full_name']
+    PR_REF = PR_DATA['head']['ref']
+    COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+  }
 }
 
 const MAIN_REF = 'canary'
 const MAIN_REPO = 'zeit/next.js'
-const GIT_ROOT = 'https://github.com/'
+const GIT_ROOT = GIT_ROOT_DIR || 'https://github.com/'
+const RELEASE_TAG = GITHUB_REF
+const isCanaryRelease = ACTION === 'release' && RELEASE_TAG.indexOf('canary') > -1
+
+if (isCanaryRelease) {
+  PR_REPO = MAIN_REPO
+  PR_REF = MAIN_REF
+}
 
 if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   throw new Error(
@@ -46,8 +59,15 @@ if (!GITHUB_REPOSITORY || !GITHUB_REF) {
   )
 }
 
-if (ACTION !== 'synchronize' && ACTION !== 'opened') {
-  console.log('Not running for', ACTION, 'event action')
+if (ACTION !== 'synchronize' && ACTION !== 'opened' && !isCanaryRelease) {
+  console.log(
+    'Not running for',
+    ACTION,
+    'event action on repo:',
+    PR_REPO,
+    'and ref:',
+    PR_REF
+  )
   process.exit(0)
 }
 
@@ -55,6 +75,13 @@ console.log(
   `Got repo url: ${GITHUB_REPOSITORY} and branch/ref: ${GITHUB_REF}\n` +
     `Using repo url: ${PR_REPO} and branch/ref: ${PR_REF}\n`
 )
+
+const resetHead = async (repoDir, headTarget) => {
+  console.log(`Resetting head of ${repoDir} to ${headTarget}`)
+  await exec(`cd ${repoDir} && git reset --hard ${headTarget}`)
+  const { stdout: commitSHA } = await exec(`git rev-parse HEAD`)
+  return commitSHA
+}
 
 const checkoutRepo = async (repo, ref, outDir) => {
   const url = GIT_ROOT + repo
@@ -206,9 +233,9 @@ const getStats = async (repo, ref, dir, serverless = false) => {
       stats.clientSizes = await getClientSizes(exec, serverless, TEST_PROJ_PATH)
       finishedStats(stats, serverless, COMMENT_API_ENDPOINT, GITHUB_TOKEN, {
         MAIN_REPO,
-        MAIN_REF,
+        MAIN_REF: isCanaryRelease ? STABLE_TAG : MAIN_REF,
         PR_REPO,
-        PR_REF,
+        PR_REF: isCanaryRelease ? RELEASE_TAG : PR_REF,
       })
       cleanUp()
     } catch (error) {
@@ -233,10 +260,25 @@ async function run() {
   if (mainDir === prDir) prDir += '-1'
 
   await checkoutRepo(MAIN_REPO, MAIN_REF, mainDir)
+
+  if (isCanaryRelease) {
+    // reset to latest stable tag
+    const { stdout: stableTag } = await exec(
+      `cd ${mainDir} && git describe --exclude '*canary*' --abbrev=0`
+    )
+    STABLE_TAG = stableTag.trim()
+    await resetHead(mainDir, STABLE_TAG)
+  }
   await buildRepo(mainDir)
   console.log()
 
   await checkoutRepo(PR_REPO, PR_REF, prDir)
+
+  if (isCanaryRelease) {
+    // reset to latest canary tag getting commit id
+    const commitSHA = await resetHead(prDir, RELEASE_TAG)
+    COMMENT_API_ENDPOINT = `https://api.github.com/repos/${MAIN_REPO}/commits/${commitSHA.trim()}/comments`
+  }
   await buildRepo(prDir)
   console.log()
 
@@ -251,8 +293,11 @@ async function run() {
 }
 
 if (
+  !isCanaryRelease &&
   MAIN_REPO === PR_REPO &&
   (PR_REF === 'refs/heads/canary' || PR_REF === MAIN_REF)
 ) {
   console.log('Not running for merge into canary...')
-} else run()
+} else {
+  run()
+}
