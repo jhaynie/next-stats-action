@@ -7,6 +7,7 @@ Compares stats between current `canary` branch and a PR branch for
 - node_modules size
 - client bundle sizes
 - total build dir size
+- total bundle size
 
 After generating stats, they are posted as a comment on the PR that triggered them. 
 
