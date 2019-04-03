@@ -41,6 +41,9 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
 
   const labels = {
     buildLength: 'Build Duration',
+    nodeModulesSize: '`node_modules` Size',
+    totalBundleBytes: 'Total Bundle (main, webpack, commons) Size',
+    totalBundleGzip: 'Total Bundle (main, webpack, commons) gzip Size',
     // Client sizes
     _appClientBytes: 'Client `_app` Size',
     _appClientGzip: 'Client `_app` gzip Size',
@@ -75,14 +78,11 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     withRouterPgServerlessGzip: 'Serverless `pages/withRouter` gzip Size',
 
     baseRenderBytes: 'Base Rendered Size',
-    totalBundleBytes: 'Total Bundle (main, webpack, commons) Size',
-    totalBundleGzip: 'Total Bundle (main, webpack, commons) gzip Size',
     totalBuildSize: 'Build Dir Size',
     // avgMemUsage: 'Average Memory Usage',
     // maxMemUsage: 'Max Memory Usage',
     // avgCpuUsage: 'Average CPU Usage',
     // maxCpuUsage: 'Max CPU Usage',
-    nodeModulesSize: '`node_modules` Size',
   }
 
   Object.keys(labels).forEach(key => {
