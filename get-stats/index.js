@@ -33,11 +33,14 @@ if (GITHUB_EVENT_PATH) {
 
   if (ACTION !== 'published' && ACTION !== 'release') {
     const PR_DATA = EVENT_DATA['pull_request']
-    // Since GITHUB_REPOSITORY and REF might not match the fork
-    // use event data to get repo and ref info
-    PR_REPO = PR_DATA['head']['repo']['full_name']
-    PR_REF = PR_DATA['head']['ref']
-    COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+
+    if (PR_DATA) {
+      // Since GITHUB_REPOSITORY and REF might not match the fork
+      // use event data to get repo and ref info
+      PR_REPO = PR_DATA['head']['repo']['full_name']
+      PR_REF = PR_DATA['head']['ref']
+      COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+    }
   }
 }
 
