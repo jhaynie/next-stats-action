@@ -115,7 +115,7 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     }
     if (typeof stat1 === 'number') stat1 = formatter(stat1)
     if (typeof stat2 === 'number') stat2 = formatter(stat2)
-    if (typeof diff === 'number') {
+    if (typeof diff === 'number' && !isNaN(diff)) {
       const diffSign = diff < 0 ? '-' : '⚠️  +'
       diff = formatter(Math.abs(diff))
       diff = diffSign + diff
@@ -203,7 +203,7 @@ const finishedStats = (
     const isBundleBytes = bundleByteKeys[key]
     if (isBundleBytes || bundleGzipKeys[key]) {
       curStats[isBundleBytes ? 'totalBundleBytes' : 'totalBundleGzip'] +=
-        stats.clientSizes[key] || 0
+        typeof stats.clientSizes[key] === 'number' ? stats.clientSizes[key] : 0
     }
   })
 

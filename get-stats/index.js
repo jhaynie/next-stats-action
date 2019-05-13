@@ -125,8 +125,8 @@ const setupTestProj = async repoDir => {
   await exec(`cd ${TEST_PROJ_PATH} && yarn install`)
 }
 
-const statsFailed = message => {
-  console.error(`Failed to get stats:`, new Error(message))
+const statsFailed = (message, err) => {
+  console.error(`Failed to get stats:`, err || new Error(message))
   process.exit(1)
 }
 
@@ -252,14 +252,14 @@ const getStats = async (repo, ref, dir, serverless = false) => {
       )
       cleanUp()
     } catch (error) {
-      statsFailed(error.message)
+      statsFailed(null, error)
       cleanUp(true)
     }
   })
 
   child.on('error', error => {
     cleanUp(true)
-    statsFailed(error.message)
+    statsFailed(null, error)
   })
 
   child.stderr.on('data', chunk => console.log(chunk.toString()))
@@ -293,7 +293,7 @@ async function run() {
     })
     .then(() => getStats(MAIN_REPO, MAIN_REF, mainDir, true))
     .then(() => getStats(PR_REPO, PR_REF, prDir, true))
-    .catch(error => statsFailed(error.message))
+    .catch(error => statsFailed(null, error))
 }
 
 if (
