@@ -208,11 +208,17 @@ const finishedStats = (
   })
 
   if (isPR) {
+    let summaryPostText = ''
+
+    if (currentStats.totalBundleBytes < prStats.totalBundleBytes) {
+      summaryPostText = ' ⚠️ Total Bundle Size Increase ⚠️'
+    }
     const formattedStats = formatStats(reposObj)
+
     statsComment += `\n\n<details>\n`
     statsComment += `<summary>Click to expand ${
       serverless ? 'serverless ' : ''
-    }stats</summary>\n\n`
+    }stats${summaryPostText}</summary>\n\n`
     statsComment += formattedStats
     statsComment += `\n</details>`
 
@@ -244,6 +250,10 @@ const finishedStats = (
       .catch(err => {
         console.error('Error occurred posting comment', err)
       })
+
+    if (summaryPostText) {
+      throw new Error('Total bundle size increased, failing action...')
+    }
   }
 }
 
