@@ -2,5 +2,6 @@
 *-next.js*
 **/.next
 .vscode
+.DS_Store
 test-project/yarn.lock
 test-project/next.config.js
