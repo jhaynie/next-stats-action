@@ -6,4 +6,6 @@ function useWithRouter (props) {
   )
 }
 
+useWithRouter.getInitialProps = () => ({})
+
 export default withRouter(useWithRouter)

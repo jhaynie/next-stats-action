@@ -250,12 +250,6 @@ const finishedStats = (
       .catch(err => {
         console.error('Error occurred posting comment', err)
       })
-      .then(() => {
-        if (summaryPostText) {
-          console.error('Total bundle size increased, failing action...')
-          process.exit(1)
-        }
-      })
   }
 }
 

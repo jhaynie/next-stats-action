@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export default function aLink(props) {
+function aLink(props) {
   return (
     <div>
       <h3>A Link page!</h3>
@@ -8,3 +8,7 @@ export default function aLink(props) {
     </div>
   )
 }
+
+aLink.getInitialProps = () => ({})
+
+export default aLink

@@ -1,7 +1,11 @@
 import Router from 'next/router'
 
-export default function routerDirect (props) {
+function routerDirect (props) {
   return (
     <div>I import the router directly</div>
   )
 }
+
+routerDirect.getInitialProps = () => ({})
+
+export default routerDirect
