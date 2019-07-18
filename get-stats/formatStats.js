@@ -213,6 +213,9 @@ const finishedStats = (
     if (currentStats.totalBundleBytes < prStats.totalBundleBytes) {
       summaryPostText = ' ⚠️ Total Bundle Size Increase ⚠️'
     }
+    if (currentStats.totalBundleBytes > prStats.totalBundleBytes) {
+      summaryPostText = ' ✅ Total Bundle Size Decrease ✅'
+    }
     const formattedStats = formatStats(reposObj)
 
     statsComment += `\n\n<details>\n`
