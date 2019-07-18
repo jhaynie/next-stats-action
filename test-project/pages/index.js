@@ -1,1 +1,5 @@
-export default () => "Hello world 👋"
+const Page = () => "Hello world 👋"
+
+Page.getInitialProps = () => ({})
+
+export default Page
