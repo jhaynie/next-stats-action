@@ -88,12 +88,31 @@ const resetHead = async (repoDir, headTarget) => {
   return commitSHA
 }
 
-const checkoutRepo = async (repo, ref, outDir) => {
+const checkoutRepo = async (repo, ref, outDir, mainDir) => {
   const url = GIT_ROOT + repo
   console.log(`Cloning ${url} to ${outDir}`)
   await exec(`rm -rf ${outDir}`)
   await exec(`git clone ${url} ${outDir}`)
   await exec(`cd ${outDir} && git checkout ${ref}`)
+
+  // auto merge canary to PR branches if possible
+  if (ref !== MAIN_REF && !isCanaryRelease) {
+    console.log('Attempting auto merging of canary into', ref)
+    await exec(`cd ${outDir} && git remote add upstream ../${mainDir}`)
+    await exec(`cd ${outDir} && git fetch upstream`)
+
+    try {
+      await exec(`cd ${outDir} && git merge upstream/canary`)
+      console.log('Auto merged canary successfully')
+    } catch (err) {
+      console.log('Failed to auto merge canary:\n', err.stdout)
+
+      if (err.stdout && err.stdout.includes('CONFLICT')) {
+        await exec(`cd ${outDir} && git merge --abort`)
+        console.log('Aborted merge...')
+      }
+    }
+  }
 }
 
 const buildRepo = async dir => {
@@ -276,7 +295,7 @@ async function run() {
   await buildRepo(mainDir)
   console.log()
 
-  await checkoutRepo(PR_REPO, PR_REF, prDir)
+  await checkoutRepo(PR_REPO, PR_REF, prDir, mainDir)
 
   if (isCanaryRelease) {
     // reset to latest canary tag getting commit id
