@@ -186,7 +186,7 @@ const getRenderSize = () => {
   })
 }
 
-const getStats = async (repo, ref, dir, serverless = false) => {
+const getStats = async (repo, ref, dir, serverless = false, diff = false) => {
   const nextConfig = join(TEST_PROJ_PATH, 'next.config.js')
   if (serverless) {
     await writeFile(
@@ -194,6 +194,20 @@ const getStats = async (repo, ref, dir, serverless = false) => {
       `
       module.exports = { target: 'serverless' }
     `
+    )
+  } else if (diff) {
+    // disable minifying for diffing
+    await writeFile(
+      nextConfig,
+      `
+      module.exports = {
+        webpack(config) {
+          config.optimization.minimize = false
+          config.optimization.minimizer = undefined
+          return config
+        }
+      }
+      `
     )
   } else {
     await exec(`rm -f ${nextConfig}`)
@@ -234,12 +248,12 @@ const getStats = async (repo, ref, dir, serverless = false) => {
     }
   }, 100)
 
-  const cleanUp = hadError => {
+  const cleanUp = (hadError, runDiff) => {
     pidUsage.clear()
     clearInterval(statsInterval)
     if (!child.killed) child.kill()
     if (hadError) return statsReject()
-    statsResolve()
+    statsResolve(runDiff)
   }
 
   child.on('exit', async code => {
@@ -254,8 +268,15 @@ const getStats = async (repo, ref, dir, serverless = false) => {
       }
       // Get total build output size
       stats.totalBuildSize = await getDirSize(`${TEST_PROJ_PATH}/.next`)
-      stats.clientSizes = await getClientSizes(exec, serverless, TEST_PROJ_PATH)
-      finishedStats(
+      stats.clientSizes = await getClientSizes(
+        exec,
+        serverless,
+        TEST_PROJ_PATH,
+        diff,
+        MAIN_REF !== ref
+      )
+      const runDiff = finishedStats(
+        diff,
         stats,
         serverless,
         isCanaryRelease,
@@ -269,7 +290,7 @@ const getStats = async (repo, ref, dir, serverless = false) => {
           isCanaryRelease,
         }
       )
-      cleanUp()
+      cleanUp(false, runDiff)
     } catch (error) {
       statsFailed(null, error)
       cleanUp(true)
@@ -282,8 +303,11 @@ const getStats = async (repo, ref, dir, serverless = false) => {
   })
 
   child.stderr.on('data', chunk => console.log(chunk.toString()))
-  await statsPromise
-  console.log()
+
+  return statsPromise.then(res => {
+    console.log()
+    return res
+  })
 }
 
 async function run() {
@@ -307,7 +331,13 @@ async function run() {
 
   getStats(MAIN_REPO, MAIN_REF, mainDir)
     .then(() => getStats(PR_REPO, PR_REF, prDir))
-    .then(() => {
+    .then(async runDiff => {
+      if (runDiff) {
+        console.log('Got bundle size increase, running diff\n')
+        await exec(`rm -rf ${join(TEST_PROJ_PATH, '..', 'diff')}`)
+        await getStats(MAIN_REPO, MAIN_REF, mainDir, false, true)
+        await getStats(PR_REPO, PR_REF, prDir, false, true)
+      }
       console.log('Getting serverless stats')
     })
     .then(() => getStats(MAIN_REPO, MAIN_REF, mainDir, true))

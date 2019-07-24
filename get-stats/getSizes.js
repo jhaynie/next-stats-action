@@ -27,7 +27,7 @@ async function getFileSize(path) {
   return stats.size
 }
 
-async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
+async function getClientSizes(exec, serverless, TEST_PROJ_PATH, diff, isPR) {
   const staticPath = join(TEST_PROJ_PATH, '.next/static')
   const serverlessPath = join(TEST_PROJ_PATH, '.next/serverless/pages')
 
@@ -60,6 +60,27 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH) {
           withRouterPgServerlessBytes: join(serverlessPath, 'withRouter.js'),
         }
       : {}),
+  }
+
+  if (diff) {
+    const diffDir = join(TEST_PROJ_PATH, '..', 'diff')
+    await exec(`mkdir -p ${diffDir}`)
+    await exec(`cp ${paths.commonChunkBytes} ${join(diffDir, 'commons.js')}`)
+    await exec(`cp ${paths.clientMainBytes} ${join(diffDir, 'main.js')}`)
+    await exec(`cp ${paths.clientWebpackBytes} ${join(diffDir, 'webpack.js')}`)
+    const files = ['commons.js', 'main.js', 'webpack.js']
+
+    if (isPR) {
+      const diffs = {}
+      for (const file of files) {
+        const { stdout } = await exec(`cd ${diffDir} && git diff ${file}`)
+        diffs[file] = (stdout || '').split(file).pop()
+      }
+      sizes.diffs = diffs
+    } else {
+      await exec(`cd ${diffDir} && git init && git add ${files.join(' ')}`)
+    }
+    return sizes
   }
 
   for (const key of Object.keys(paths)) {

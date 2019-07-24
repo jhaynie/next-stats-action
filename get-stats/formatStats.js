@@ -2,7 +2,7 @@ const fetch = require('node-fetch')
 const prettyMs = require('pretty-ms')
 const prettyBytes = require('pretty-bytes')
 
-// stats from main repo/reef
+// stats from main repo/ref
 let currentStats = {
   // avg bytes of memory used
   // avgMemUsage: null,
@@ -128,8 +128,10 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
 }
 
 let statsComment = `## Stats from current PR`
+let diffContent = ''
 
 const finishedStats = (
+  diff,
   stats,
   serverless,
   isCanaryRelease,
@@ -140,14 +142,50 @@ const finishedStats = (
   if (isCanaryRelease && statsComment.indexOf('current PR') > -1) {
     statsComment = '## Stats from current release'
   }
-  // Clear stats for serverless
-  if (serverless && prStats.buildLength) {
+  // Clear stats for serverless or diff
+  if ((serverless || diff) && prStats.buildLength) {
     currentStats = {}
     prStats = {}
   }
+  const { diffs } = stats.clientSizes
   const isPR = Boolean(currentStats.buildLength)
   const curStats = isPR ? prStats : currentStats
   const numUsage = stats.memUsage.length
+
+  if (diffs && isPR) {
+    let diffLength = 0
+    const files = Object.keys(diffs)
+    const formattedDiffs = {}
+
+    for (const file of files) {
+      const content = diffs[file]
+      if (!content) continue
+
+      diffLength += content.length
+      formattedDiffs[file] = `<details>
+        <summary>Diff for <strong>${file}</strong></summary>${'\n\n```diff\n' +
+        content +
+        '\n```\n'}</details>
+      `
+    }
+
+    if (diffLength > 150 * 1000) {
+      for (const file of files) {
+        if (diffs[file].length > 50 * 1000) {
+          diffLength -= diffs[file].length
+          formattedDiffs[
+            file
+          ] = `Diff for <strong>${file}</strong> - Too large to display`
+        }
+        if (diffLength < 150 * 1000) break
+      }
+    }
+    diffContent = files.map(file => formattedDiffs[file]).join('\n')
+    // update buildLength so it's reset for the next run
+    curStats.buildLength = 1
+    // finished generating diffs return for serverless stats
+    return
+  }
 
   // Calculate Max/Avg for memory and cpu percent
   for (let i = 0; i < numUsage; i++) {
@@ -208,9 +246,11 @@ const finishedStats = (
   })
 
   if (isPR) {
+    let runDiff = false
     let summaryPostText = ''
 
     if (currentStats.totalBundleBytes < prStats.totalBundleBytes) {
+      runDiff = !serverless && !diff
       summaryPostText = ' ⚠️ Total Bundle Size Increase ⚠️'
     }
     if (currentStats.totalBundleBytes > prStats.totalBundleBytes) {
@@ -223,36 +263,42 @@ const finishedStats = (
       serverless ? 'serverless ' : ''
     }stats${summaryPostText}</summary>\n\n`
     statsComment += formattedStats
-    statsComment += `\n</details>`
+    statsComment += `\n</details>\n`
 
-    if (!serverless) return
+    if (!serverless) return runDiff
+    statsComment += diffContent
+
     console.log('\nFinished!\n')
     console.log(statsComment)
     console.log('Posting stats...')
 
-    if (!commentApiEndpoint)
-      return console.log('No comment endpoint, not posting')
-    if (!githubToken) return console.log('No github token, not posting')
-
-    fetch(commentApiEndpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `token ${githubToken}`,
-      },
-      body: JSON.stringify({
-        body: statsComment,
-      }),
-    })
-      .then(res => {
-        if (res.ok) {
-          console.log('Posted comment with stats!')
-        } else {
-          console.error('Failed to post comment', res.status)
-        }
+    if (commentApiEndpoint && githubToken) {
+      fetch(commentApiEndpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `token ${githubToken}`,
+        },
+        body: JSON.stringify({
+          body: statsComment,
+        }),
       })
-      .catch(err => {
-        console.error('Error occurred posting comment', err)
-      })
+        .then(res => {
+          if (res.ok) {
+            console.log('Posted comment with stats!')
+          } else {
+            console.error('Failed to post comment', res.status)
+          }
+        })
+        .catch(err => {
+          console.error('Error occurred posting comment', err)
+        })
+    } else {
+      console.log(
+        `${
+          githubToken ? 'No comment endpoint' : 'No github token'
+        }, not posting`
+      )
+    }
   }
 }
 
