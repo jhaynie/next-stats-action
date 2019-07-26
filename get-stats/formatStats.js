@@ -250,12 +250,12 @@ const finishedStats = (
     let summaryPostText = ''
 
     if (currentStats.totalBundleBytes < prStats.totalBundleBytes) {
-      runDiff = !serverless && !diff
       summaryPostText = ' ⚠️ Total Bundle Size Increase ⚠️'
     }
     if (currentStats.totalBundleBytes > prStats.totalBundleBytes) {
       summaryPostText = ' ✅ Total Bundle Size Decrease ✅'
     }
+    runDiff = summaryPostText && !serverless && !diff
     const formattedStats = formatStats(reposObj)
 
     statsComment += `\n\n<details>\n`
