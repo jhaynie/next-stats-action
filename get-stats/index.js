@@ -41,6 +41,10 @@ if (GITHUB_EVENT_PATH) {
       PR_REPO = PR_DATA['head']['repo']['full_name']
       PR_REF = PR_DATA['head']['ref']
       COMMENT_API_ENDPOINT = PR_DATA['_links']['comments']
+
+      if (COMMENT_API_ENDPOINT && typeof COMMENT_API_ENDPOINT === 'object') {
+        COMMENT_API_ENDPOINT = COMMENT_API_ENDPOINT['href']
+      }
     }
   }
 }
