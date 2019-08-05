@@ -270,7 +270,7 @@ const finishedStats = (
 
     console.log('\nFinished!\n')
     console.log(statsComment)
-    console.log('Posting stats...')
+    console.log('Posting stats to endpoint:', commentApiEndpoint)
 
     if (commentApiEndpoint && githubToken) {
       fetch(commentApiEndpoint, {
