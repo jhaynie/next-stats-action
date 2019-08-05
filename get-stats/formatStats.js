@@ -287,6 +287,9 @@ const finishedStats = (
             console.log('Posted comment with stats!')
           } else {
             console.error('Failed to post comment', res.status)
+            try {
+              console.error(await res.text())
+            } catch (_) {}
           }
         })
         .catch(err => {
