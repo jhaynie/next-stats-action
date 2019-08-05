@@ -9,17 +9,18 @@ const { getDirSize, getClientSizes } = require('./getSizes')
 
 const execP = promisify(execSync)
 const writeFile = promisify(writeFileOrig)
-const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '' } })
+const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '', PR_STATS_TEMP_TOKEN: '' } })
 
 const {
   GITHUB_ACTION,
   GITHUB_EVENT_PATH,
   GITHUB_REPOSITORY,
   GITHUB_REF,
-  GITHUB_TOKEN,
   GIT_ROOT_DIR,
+  PR_STATS_TEMP_TOKEN
 } = process.env
 
+const GITHUB_TOKEN = PR_STATS_TEMP_TOKEN || process.env.GITHUB_TOKEN
 const TEST_PROJ_PATH = join(__dirname, '../test-project')
 let PR_REPO = GITHUB_REPOSITORY
 let PR_REF = GITHUB_REF
