@@ -282,7 +282,7 @@ const finishedStats = (
           body: statsComment,
         }),
       })
-        .then(res => {
+        .then(async res => {
           if (res.ok) {
             console.log('Posted comment with stats!')
           } else {
