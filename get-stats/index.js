@@ -28,6 +28,8 @@ let COMMENT_API_ENDPOINT
 let ACTION = GITHUB_ACTION
 let EVENT_DATA
 
+console.log(`Using ${PR_STATS_TEMP_TOKEN ? 'temp PR Stats' : 'provided'} token`);
+
 if (GITHUB_EVENT_PATH) {
   EVENT_DATA = require(GITHUB_EVENT_PATH)
   ACTION = EVENT_DATA['action']
