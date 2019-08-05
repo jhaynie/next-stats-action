@@ -276,7 +276,7 @@ const finishedStats = (
       fetch(commentApiEndpoint, {
         method: 'POST',
         headers: {
-          Authorization: `token ${githubToken}`,
+          Authorization: `bearer ${githubToken}`,
         },
         body: JSON.stringify({
           body: statsComment,
