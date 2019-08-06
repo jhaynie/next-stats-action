@@ -202,7 +202,12 @@ const getStats = async (repo, ref, dir, serverless = false, diff = false) => {
     await writeFile(
       nextConfig,
       `
-      module.exports = { target: 'serverless' }
+      module.exports = {
+        target: 'serverless',
+        experimental: {
+          modern: true
+        }
+      }
     `
     )
   } else if (diff) {
@@ -215,12 +220,24 @@ const getStats = async (repo, ref, dir, serverless = false, diff = false) => {
           config.optimization.minimize = false
           config.optimization.minimizer = undefined
           return config
+        },
+        experimental: {
+          modern: true
         }
       }
       `
     )
   } else {
-    await exec(`rm -f ${nextConfig}`)
+    await writeFile(
+      nextConfig,
+      `
+      module.exports = {
+        experimental: {
+          modern: true
+        }
+      }
+      `
+    )
   }
 
   let statsResolve

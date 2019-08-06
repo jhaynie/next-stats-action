@@ -1,7 +1,12 @@
-const { readdir: readdirOrig, stat: origStat } = require('fs')
+const {
+  readdir: readdirOrig,
+  stat: origStat,
+  readFile: readFileOrig,
+} = require('fs')
 const { promisify } = require('util')
 const { join } = require('path')
 
+const readFile = promisify(readFileOrig)
 const readdir = promisify(readdirOrig)
 const stat = promisify(origStat)
 
@@ -31,26 +36,40 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH, diff, isPR) {
   const staticPath = join(TEST_PROJ_PATH, '.next/static')
   const serverlessPath = join(TEST_PROJ_PATH, '.next/serverless/pages')
 
-  const { stdout: pagesPath } = await exec(`find ${staticPath} -name 'pages'`)
-  const { stdout: commonsPath } = await exec(
-    `find ${staticPath} -name 'commons*.js'`
+  const buildId = await readFile(join(TEST_PROJ_PATH, '.next/BUILD_ID'), 'utf8')
+  const pagesPath = join(
+    join(TEST_PROJ_PATH, '.next/static/', buildId, 'pages')
   )
-  const { stdout: mainPath } = await exec(`find ${staticPath} -name 'main*.js'`)
-  const { stdout: webpackPath } = await exec(
-    `find ${staticPath} -name 'webpack*.js'`
-  )
-  const cleanPgsPath = pagesPath.trim()
+
+  const runtimePath = join(staticPath, 'runtime')
+  const chunksPath = join(staticPath, 'chunks')
+  const runtimeFiles = await readdir(runtimePath)
+  const chunkFiles = await readdir(chunksPath)
+  const findFile = (files, pathPre = '', filter, modern = false) =>
+    join(
+      pathPre,
+      files.find(f => f.includes(filter) && f.endsWith('module.js') === modern)
+    )
+
   const sizes = {}
   const paths = {
-    _appClientBytes: join(cleanPgsPath, '_app.js'),
-    _errClientBytes: join(cleanPgsPath, '_error.js'),
-    indexClientBytes: join(cleanPgsPath, 'index.js'),
-    linkPgClientBytes: join(cleanPgsPath, 'link.js'),
-    routerPgClientBytes: join(cleanPgsPath, 'routerDirect.js'),
-    withRouterPgClientBytes: join(cleanPgsPath, 'withRouter.js'),
-    commonChunkBytes: commonsPath.trim(),
-    clientMainBytes: mainPath.trim(),
-    clientWebpackBytes: webpackPath.trim(),
+    _appClientBytes: join(pagesPath, '_app.js'),
+    _errClientBytes: join(pagesPath, '_error.js'),
+    indexClientBytes: join(pagesPath, 'index.js'),
+    linkPgClientBytes: join(pagesPath, 'link.js'),
+    routerPgClientBytes: join(pagesPath, 'routerDirect.js'),
+    withRouterPgClientBytes: join(pagesPath, 'withRouter.js'),
+    clientWebpackBytes: findFile(runtimeFiles, runtimePath, 'webpack'),
+    clientWebpackModernBytes: findFile(
+      runtimeFiles,
+      runtimePath,
+      'webpack',
+      true
+    ),
+    commonChunkBytes: findFile(chunkFiles, chunksPath, 'commons'),
+    commonChunkModernBytes: findFile(chunkFiles, chunksPath, 'commons', true),
+    clientMainBytes: findFile(runtimeFiles, runtimePath, 'main'),
+    clientMainModernBytes: findFile(runtimeFiles, runtimePath, 'main', true),
     ...(serverless
       ? {
           indexServerlessBytes: join(serverlessPath, 'index.js'),
@@ -62,13 +81,28 @@ async function getClientSizes(exec, serverless, TEST_PROJ_PATH, diff, isPR) {
       : {}),
   }
 
+  Object.keys(paths).forEach(key => {
+    if (!key.endsWith('ClientBytes')) return
+    paths[key + 'Modern'] = paths[key].replace(/\.js$/, '.module.js')
+  })
+
   if (diff) {
     const diffDir = join(TEST_PROJ_PATH, '..', 'diff')
     await exec(`mkdir -p ${diffDir}`)
-    await exec(`cp ${paths.commonChunkBytes} ${join(diffDir, 'commons.js')}`)
-    await exec(`cp ${paths.clientMainBytes} ${join(diffDir, 'main.js')}`)
-    await exec(`cp ${paths.clientWebpackBytes} ${join(diffDir, 'webpack.js')}`)
-    const files = ['commons.js', 'main.js', 'webpack.js']
+    const toDiff = {
+      'main.js': 'clientMainBytes',
+      'commons.js': 'commonChunkBytes',
+      'webpack.js': 'clientWebpackBytes',
+      'mainModern.js': 'clientMainModernBytes',
+      'commonsModern.js': 'commonChunkModernBytes',
+      'webpackModern.js': 'clientWebpackModernBytes',
+    }
+    const files = Object.keys(toDiff)
+
+    for (const file of files) {
+      const pathKey = toDiff[file]
+      await exec(`cp ${paths[pathKey]} ${join(diffDir, file)}`)
+    }
 
     if (isPR) {
       const diffs = {}

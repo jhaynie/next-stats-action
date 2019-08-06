@@ -44,26 +44,48 @@ const formatStats = ({ MAIN_REPO, MAIN_REF, PR_REPO, PR_REF }) => {
     nodeModulesSize: '`node_modules` Size',
     totalBundleBytes: 'Total Bundle (main, webpack, commons) Size',
     totalBundleGzip: 'Total Bundle (main, webpack, commons) gzip Size',
+    totalBundleModernBytes: 'Total Bundle (main, webpack, commons) Modern Size',
+    totalBundleModernGzip:
+      'Total Bundle (main, webpack, commons) Modern gzip Size',
+
     // Client sizes
     _appClientBytes: 'Client `_app` Size',
     _appClientGzip: 'Client `_app` gzip Size',
+    _appClientBytesModern: 'Client `_app` Modern Size',
+    _appClientGzipModern: 'Client `_app` gzip Modern Size',
     _errClientBytes: 'Client `_error` Size',
     _errClientGzip: 'Client `_error` gzip Size',
+    _errClientBytesModern: 'Client `_error` Modern Size',
+    _errClientGzipModern: 'Client `_error` gzip Modern Size',
     indexClientBytes: 'Client `pages/index` Size',
     indexClientGzip: 'Client `pages/index` gzip Size',
+    indexClientBytesModern: 'Client `pages/index` Modern Size',
+    indexClientGzipModern: 'Client `pages/index` gzip Modern Size',
     linkPgClientBytes: 'Client `pages/link` Size',
     linkPgClientGzip: 'Client `pages/link` gzip Size',
+    linkPgClientBytesModern: 'Client `pages/link` Modern Size',
+    linkPgClientGzipModern: 'Client `pages/link` gzip Modern Size',
     routerPgClientBytes: 'Client `pages/routerDirect` Size',
     routerPgClientGzip: 'Client `pages/routerDirect` gzip Size',
+    routerPgClientBytesModern: 'Client `pages/routerDirect` Modern Size',
+    routerPgClientGzipModern: 'Client `pages/routerDirect` gzip Modern Size',
     withRouterPgClientBytes: 'Client `pages/withRouter` Size',
     withRouterPgClientGzip: 'Client `pages/withRouter` gzip Size',
+    withRouterPgClientBytesModern: 'Client `pages/withRouter` Modern Size',
+    withRouterPgClientGzipModern: 'Client `pages/withRouter` gzip Modern Size',
 
     clientMainBytes: 'Client `main` Size',
     clientMainGzip: 'Client `main` gzip Size',
+    clientMainModernBytes: 'Client `main` Modern Size',
+    clientMainModernGzip: 'Client `main` Modern gzip Size',
     commonChunkBytes: 'Client `commons` Size',
     commonChunkGzip: 'Client `commons` gzip Size',
+    commonChunkModernBytes: 'Client `commons` Modern Size',
+    commonChunkModernGzip: 'Client `commons` Modern gzip Size',
     clientWebpackBytes: 'Client `webpack` Size',
     clientWebpackGzip: 'Client `webpack` gzip Size',
+    clientWebpackModernBytes: 'Client `webpack` Modern Size',
+    clientWebpackModernGzip: 'Client `webpack` Modern gzip Size',
 
     // Serverless sizes
     linkPgServerlessBytes: 'Serverless `pages/link` Size',
@@ -222,27 +244,35 @@ const finishedStats = (
   curStats.baseRenderBytes = stats.renderSize
   curStats.totalBundleBytes = 0
   curStats.totalBundleGzip = 0
+  curStats.totalBundleModernGzip = 0
+  curStats.totalBundleModernBytes = 0
 
-  const bundleByteKeys = {
-    indexClientBytes: 1,
-    _appClientBytes: 1,
-    clientMainBytes: 1,
-    commonChunkBytes: 1,
-  }
-  const bundleGzipKeys = {
-    indexClientGzip: 1,
-    _appClientGzip: 1,
-    clientMainGzip: 1,
-    commonChunkGzip: 1,
-  }
+  const bundleKeys = [
+    'indexClientBytes',
+    '_appClientBytes',
+    'clientMainBytes',
+    'commonChunkBytes',
+  ]
+  const bundleByteKeys = new Set(bundleKeys)
+  const bundleGzipKeys = new Set(
+    bundleKeys.map(k => k.replace(/Bytes$/, 'Gzip'))
+  )
+  const bundleModernKeys = new Set(
+    bundleKeys.map(k => k.replace(/Bytes$/, 'ModernBytes'))
+  )
+  const bundleGzipModernKeys = new Set(
+    bundleKeys.map(k => k.replace(/Bytes$/, 'ModernGzip'))
+  )
 
   Object.keys(stats.clientSizes).forEach(key => {
     curStats[key] = stats.clientSizes[key]
-    const isBundleBytes = bundleByteKeys[key]
-    if (isBundleBytes || bundleGzipKeys[key]) {
-      curStats[isBundleBytes ? 'totalBundleBytes' : 'totalBundleGzip'] +=
-        typeof stats.clientSizes[key] === 'number' ? stats.clientSizes[key] : 0
-    }
+    const val =
+      typeof stats.clientSizes[key] === 'number' ? stats.clientSizes[key] : 0
+
+    if (bundleByteKeys.has(key)) curStats.totalBundleBytes += val
+    if (bundleGzipKeys.has(key)) curStats.totalBundleGzip += val
+    if (bundleModernKeys.has(key)) curStats.totalBundleModernBytes += val
+    if (bundleGzipModernKeys.has(key)) curStats.totalBundleModernGzip += val
   })
 
   if (isPR) {
@@ -255,6 +285,21 @@ const finishedStats = (
     if (currentStats.totalBundleBytes > prStats.totalBundleBytes) {
       summaryPostText = ' ✅ Total Bundle Size Decrease ✅'
     }
+
+    // show modern change if not normal bundle change
+    if (
+      !summaryPostText &&
+      currentStats.totalBundleModernBytes < prStats.totalBundleModernBytes
+    ) {
+      summaryPostText = ' ⚠️ Total Modern Bundle Size Increase ⚠️'
+    }
+    if (
+      !summaryPostText &&
+      currentStats.totalBundleModernBytes > prStats.totalBundleModernBytes
+    ) {
+      summaryPostText = ' ✅ Total Modern Bundle Size Decrease ✅'
+    }
+
     runDiff = summaryPostText && !serverless && !diff
     const formattedStats = formatStats(reposObj)
 
