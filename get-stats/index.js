@@ -9,7 +9,10 @@ const { getDirSize, getClientSizes } = require('./getSizes')
 
 const execP = promisify(execSync)
 const writeFile = promisify(writeFileOrig)
-const exec = cmd => execP(cmd, { env: { ...process.env, GITHUB_TOKEN: '', PR_STATS_TEMP_TOKEN: '' } })
+const exec = cmd =>
+  execP(cmd, {
+    env: { ...process.env, GITHUB_TOKEN: '', PR_STATS_TEMP_TOKEN: '' },
+  })
 
 const {
   GITHUB_ACTION,
@@ -17,7 +20,7 @@ const {
   GITHUB_REPOSITORY,
   GITHUB_REF,
   GIT_ROOT_DIR,
-  PR_STATS_TEMP_TOKEN
+  PR_STATS_TEMP_TOKEN,
 } = process.env
 
 const GITHUB_TOKEN = PR_STATS_TEMP_TOKEN || process.env.GITHUB_TOKEN
@@ -28,7 +31,7 @@ let COMMENT_API_ENDPOINT
 let ACTION = GITHUB_ACTION
 let EVENT_DATA
 
-console.log(`Using ${PR_STATS_TEMP_TOKEN ? 'temp PR Stats' : 'provided'} token`);
+console.log(`Using ${PR_STATS_TEMP_TOKEN ? 'temp PR Stats' : 'provided'} token`)
 
 if (GITHUB_EVENT_PATH) {
   EVENT_DATA = require(GITHUB_EVENT_PATH)
@@ -112,7 +115,7 @@ const checkoutRepo = async (repo, ref, outDir, mainDir) => {
       await exec(`cd ${outDir} && git merge upstream/canary`)
       console.log('Auto merged canary successfully')
     } catch (err) {
-      console.log('Failed to auto merge canary:\n', err.stdout)
+      console.log('Failed to auto merge canary:\n', err)
 
       if (err.stdout && err.stdout.includes('CONFLICT')) {
         await exec(`cd ${outDir} && git merge --abort`)
