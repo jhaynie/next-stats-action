@@ -3,7 +3,7 @@ const fs = require('fs-extra')
 const exec = require('../util/exec')
 const { remove } = require('fs-extra')
 
-module.exports = (actionInfo) => {
+module.exports = actionInfo => {
   return {
     async cloneRepo(repoPath = '', dest = '') {
       await remove(dest)
@@ -39,6 +39,6 @@ module.exports = (actionInfo) => {
         )
       }
       return pkgPaths
-    }
+    },
   }
 }

@@ -11,7 +11,6 @@
   "pre-commit": "lint-staged",
   "lint-staged": {
     "*.js": [
-      "yarn lint",
       "yarn format",
       "git add"
     ]

@@ -7,13 +7,10 @@ const actionInfo = require('./prepare/action-info')()
 const {
   cloneRepo,
   checkoutRef,
-  linkPackages
+  linkPackages,
 } = require('./prepare/repo-setup')(actionInfo)
 
-const {
-  mainRepoDir,
-  diffRepoDir,
-} = require('./constants')
+const { mainRepoDir, diffRepoDir } = require('./constants')
 
 ;(async () => {
   try {
@@ -22,7 +19,10 @@ const {
     await checkoutRef(actionInfo.prRef, diffRepoDir)
 
     // load stats-config
-    const statsConfig = require(path.join(diffRepoDir, '.stats-app/stats-config.js'))
+    const statsConfig = require(path.join(
+      diffRepoDir,
+      '.stats-app/stats-config.js'
+    ))
     logger('Got statsConfig:', statsConfig)
 
     // clone main repository/ref

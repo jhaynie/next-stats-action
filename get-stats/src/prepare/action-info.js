@@ -52,7 +52,7 @@ module.exports = function actionInfo() {
     ...info,
     githubToken: GITHUB_TOKEN
       ? 'GITHUB_TOKEN'
-      : PR_STATS_COMMENT_TOKEN && 'PR_STATS_COMMENT_TOKEN'
+      : PR_STATS_COMMENT_TOKEN && 'PR_STATS_COMMENT_TOKEN',
   })
 
   return info

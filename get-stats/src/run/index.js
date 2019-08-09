@@ -4,17 +4,12 @@ const exec = require('../util/exec')
 const logger = require('../util/logger')
 const collectStats = require('./collect-stats')
 
-const {
-  mainRepoDir,
-  diffRepoDir,
-  statsAppDir
-} = require('../constants')
+const { diffRepoDir, statsAppDir } = require('../constants')
 
-module.exports = async function runConfigs(configs = [], {
-  statsConfig,
-  mainRepoPkgPaths,
-  diffRepoPkgPaths,
-}) {
+module.exports = async function runConfigs(
+  configs = [],
+  { statsConfig, mainRepoPkgPaths, diffRepoPkgPaths }
+) {
   const results = []
 
   for (const config of configs) {
@@ -22,10 +17,7 @@ module.exports = async function runConfigs(configs = [], {
 
     // clean statsAppDir
     await fs.remove(statsAppDir)
-    await fs.copy(
-      path.join(diffRepoDir, '.stats-app'),
-      statsAppDir
-    )
+    await fs.copy(path.join(diffRepoDir, '.stats-app'), statsAppDir)
 
     const origFiles = new Set(await fs.readdir(statsAppDir))
     let mainRepoStats
@@ -46,7 +38,10 @@ module.exports = async function runConfigs(configs = [], {
         }
       }
 
-      // TODO: apply config files
+      // apply config files
+      for (const configFile of config.configFiles) {
+        await fs.writeFile(configFile.path, configFile.contents, 'utf8')
+      }
 
       await linkPkgs(statsAppDir, pkgPaths)
       const buildStart = new Date().getTime()
@@ -56,13 +51,17 @@ module.exports = async function runConfigs(configs = [], {
 
       curStats = {
         ...curStats,
-        ...(await collectStats(config.filesToTrack))
+        ...(await collectStats(config.filesToTrack)),
       }
       if (mainRepoStats) diffRepoStats = curStats
       else mainRepoStats = curStats
-
-      // TODO: determine if we need to diff
     }
+
+    results.push({
+      title: config.title,
+      mainRepoStats,
+      diffRepoStats,
+    })
   }
 
   return results
@@ -81,8 +80,7 @@ async function linkPkgs(pkgDir = '', pkgPaths) {
 
     if (pkgData.dependencies && pkgData.dependencies[pkg]) {
       pkgData.dependencies[pkg] = pkgPath
-    }
-    else if (pkgData.devDependencies && pkgData.devDependencies[pkg]) {
+    } else if (pkgData.devDependencies && pkgData.devDependencies[pkg]) {
       pkgData.devDependencies[pkg] = pkgPath
     }
   }
